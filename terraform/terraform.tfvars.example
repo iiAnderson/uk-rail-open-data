@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and edit. The bucket name must be globally unique.
+
+project_name = "uk-rail-dashboard"
+region       = "eu-west-1"
+
+# Optional custom domain. The certificate must already exist in us-east-1.
+# domain_name         = "rail.example.com"
+# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+
+tags = {
+  Owner = "me"
+}
