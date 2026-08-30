@@ -227,3 +227,6 @@ crash.log
 
 # Terraform build artefacts
 terraform/.build/
+
+# Saved plans
+terraform/tfplan*
