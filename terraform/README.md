@@ -82,7 +82,7 @@ The dashboard's "vs 28-day average" needs history, and a fresh deployment has
 none — the first run would show `+0.0%` against a single day. Populate it once:
 
 ```bash
-python site/aggregate/aggregate.py \
+python aggregate/aggregate.py \
   --backfill 2026-03-18 2026-05-16 \
   --output "s3://$(terraform -chdir=terraform output -raw bucket_name)/data" \
   --workgroup "$(terraform -chdir=terraform output -raw athena_workgroup)"

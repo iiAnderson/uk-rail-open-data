@@ -97,9 +97,9 @@ data "archive_file" "aggregate" {
   output_path = "${path.module}/.build/${local.aggregator_name}.zip"
 
   dynamic "source" {
-    for_each = fileset("${path.module}/../site/aggregate", "*.{py,json}")
+    for_each = fileset("${path.module}/../aggregate", "*.{py,json}")
     content {
-      content  = file("${path.module}/../site/aggregate/${source.value}")
+      content  = file("${path.module}/../aggregate/${source.value}")
       filename = source.value
     }
   }

@@ -9,7 +9,8 @@ one row per train.
 
 - **`athena/`** — table definitions. Run these in your own AWS account and start querying.
 - **`queries/`** — worked examples, including the full passenger-hours metric.
-- **`site/`** — the dashboard, and the job that builds it.
+- **`site/`** — the dashboard. Everything here is served publicly; nothing else is.
+- **`aggregate/`** — the daily job that builds the dashboard's data.
 - **`terraform/`** — deploy your own copy of the site, and the Lambda that rebuilds it daily.
 
 ## The dataset

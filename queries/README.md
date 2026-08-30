@@ -14,7 +14,7 @@ Run these directly. Each is commented with what it scans.
 The rest of the files build one number: **how much passenger time the network
 lost**. They are fragments — [`_base_passenger_hours.sql`](_base_passenger_hours.sql)
 holds the shared CTEs and each aggregation file picks up from `lost`.
-`site/aggregate/aggregate.py` joins them:
+`aggregate/aggregate.py` joins them:
 
 ```python
 sql = load_sql("by_operator", date(2026, 5, 16))

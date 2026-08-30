@@ -9,7 +9,7 @@ python aggregate.py --date 2026-05-16 \
   --results s3://YOUR-BUCKET/athena-results/
 ```
 
-Writes `../data/latest.json` and updates `../data/trend.json`.
+Writes `../site/data/latest.json` and updates `../site/data/trend.json`.
 
 ## Design
 
@@ -30,12 +30,12 @@ backfill a year.
 
 **Gaps stay gaps.** A day that returns no rows is skipped rather than recorded
 as zero, so a pipeline failure never renders as a day on which nothing went
-wrong. See [Known gaps](../../README.md#known-gaps).
+wrong. See [Known gaps](../README.md#known-gaps).
 
 ## Running it daily
 
 `terraform/` deploys this as a Lambda on a 17:00 UTC schedule, which is the
-supported path — see [terraform/README.md](../../terraform/README.md).
+supported path — see [terraform/README.md](../terraform/README.md).
 
 To run it anywhere else, the same file works unchanged. `--output` takes a
 local directory or an `s3://bucket/prefix`, and `handler()` is the Lambda
@@ -43,7 +43,7 @@ entrypoint, configured through `ATHENA_DATABASE`, `ATHENA_WORKGROUP`,
 `ATHENA_RESULTS` and `OUTPUT_LOCATION`.
 
 ```cron
-0 17 * * *  cd /srv/uk-rail && python site/aggregate/aggregate.py \
+0 17 * * *  cd /srv/uk-rail && python aggregate/aggregate.py \
               --output s3://my-site-bucket/data --workgroup my-workgroup
 ```
 
@@ -53,7 +53,7 @@ With no `--date` it builds yesterday.
 
 | File | Purpose |
 |---|---|
-| `../../queries/*.sql` | the metric itself |
+| `../queries/*.sql` | the metric itself |
 | `toc_names.json` | operator code → name |
 | `reason_codes.json` | Darwin reason code → text (507 codes) |
 

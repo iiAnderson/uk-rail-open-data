@@ -37,7 +37,7 @@ HERE = Path(__file__).parent
 
 # Locally the queries live two levels up; in the Lambda package they are bundled
 # alongside the code.
-QUERIES = HERE / "queries" if (HERE / "queries").is_dir() else HERE.parent.parent / "queries"
+QUERIES = HERE / "queries" if (HERE / "queries").is_dir() else HERE.parent / "queries"
 
 # Only FY2024/25 journey volumes are published. They weight relative demand
 # between station pairs; they are not a current traffic estimate. See DATA.md.
@@ -362,7 +362,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default=str(HERE.parent / "data"),
+        default=str(HERE.parent / "site" / "data"),
         help="Directory or s3://bucket/prefix for the JSON files.",
     )
     parser.add_argument("--database", default="uk_rail")
