@@ -224,3 +224,6 @@ __marimo__/
 *.tfstate.*
 terraform.tfvars
 crash.log
+
+# Terraform build artefacts
+terraform/.build/

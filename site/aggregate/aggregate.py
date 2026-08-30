@@ -1,33 +1,43 @@
 """Build the dashboard's JSON files from Athena.
 
 One run covers one service day. It scans a single partition of normalised_v1
-(about 6 MB), so a day costs a fraction of a penny and the whole thing is
-designed to run once, overnight, from cron or a scheduled Lambda.
+(about 27 MB including the reference tables), so a day costs a fraction of a
+penny and the whole thing is designed to run once, unattended, overnight.
 
-    python aggregate.py --date 2026-08-29 --results s3://my-bucket/athena/
+Locally:
+
+    python aggregate.py --date 2026-05-16 --results s3://my-bucket/athena/
+
+Straight to a site bucket, which is what the Lambda does:
+
+    python aggregate.py --output s3://my-site-bucket/data --results s3://...
 
 Trend history is accumulated rather than recomputed: each run upserts one point
-into data/trend.json and leaves the rest alone. Use --backfill to fill it in the
-first time.
+into trend.json and leaves the rest alone, so the cost of a run does not grow
+with the length of the series. Use --backfill to populate it the first time.
 
-    python aggregate.py --backfill 2025-01-01 2026-08-29 --results s3://...
+    python aggregate.py --backfill 2026-03-18 2026-05-16 --results s3://...
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from urllib.parse import urlparse
 
 import boto3
 
 HERE = Path(__file__).parent
-QUERIES = HERE.parent.parent / "queries"
-DEFAULT_OUTPUT = HERE.parent / "data"
+
+# Locally the queries live two levels up; in the Lambda package they are bundled
+# alongside the code.
+QUERIES = HERE / "queries" if (HERE / "queries").is_dir() else HERE.parent.parent / "queries"
 
 # Only FY2024/25 journey volumes are published. They weight relative demand
 # between station pairs; they are not a current traffic estimate. See DATA.md.
@@ -53,6 +63,49 @@ def reason_text(code: str | None) -> str:
     return REASON_CODES.get(str(code).strip(), f"Reason code {code}")
 
 
+class Output:
+    """Somewhere to put the built JSON — a local directory or an S3 prefix.
+
+    The two behave identically from the caller's point of view, which is what
+    lets the same code run from a laptop and from a Lambda.
+    """
+
+    def __init__(self, target: str) -> None:
+        self._s3_bucket: str | None = None
+        if target.startswith("s3://"):
+            parsed = urlparse(target)
+            self._s3_bucket = parsed.netloc
+            self._prefix = parsed.path.strip("/")
+            self._client = boto3.client("s3")
+        else:
+            self._dir = Path(target)
+            self._dir.mkdir(parents=True, exist_ok=True)
+
+    def __str__(self) -> str:
+        return f"s3://{self._s3_bucket}/{self._prefix}" if self._s3_bucket else str(self._dir)
+
+    def read(self, name: str) -> str | None:
+        """Existing contents, or None if it is not there yet."""
+        if self._s3_bucket:
+            try:
+                key = f"{self._prefix}/{name}" if self._prefix else name
+                return self._client.get_object(Bucket=self._s3_bucket, Key=key)["Body"].read().decode()
+            except self._client.exceptions.NoSuchKey:
+                return None
+        path = self._dir / name
+        return path.read_text() if path.exists() else None
+
+    def write(self, name: str, text: str) -> None:
+        if self._s3_bucket:
+            key = f"{self._prefix}/{name}" if self._prefix else name
+            self._client.put_object(
+                Bucket=self._s3_bucket, Key=key, Body=text.encode(),
+                ContentType="application/json", CacheControl="max-age=300",
+            )
+        else:
+            (self._dir / name).write_text(text)
+
+
 class Athena:
     """Minimal synchronous Athena client."""
 
@@ -63,12 +116,16 @@ class Athena:
         self._results = results
 
     def query(self, sql: str) -> list[dict[str, Any]]:
-        execution_id = self._client.start_query_execution(
-            QueryString=sql,
-            QueryExecutionContext={"Database": self._database},
-            WorkGroup=self._workgroup,
-            ResultConfiguration={"OutputLocation": self._results},
-        )["QueryExecutionId"]
+        request: dict[str, Any] = {
+            "QueryString": sql,
+            "QueryExecutionContext": {"Database": self._database},
+            "WorkGroup": self._workgroup,
+        }
+        # A workgroup that enforces its own output location rejects an override.
+        if self._results:
+            request["ResultConfiguration"] = {"OutputLocation": self._results}
+
+        execution_id = self._client.start_query_execution(**request)["QueryExecutionId"]
 
         while True:
             execution = self._client.get_query_execution(QueryExecutionId=execution_id)
@@ -107,9 +164,7 @@ def load_sql(name: str, day: date) -> str:
         line for line in tail.splitlines() if not line.strip().startswith("--")
     ).strip()
 
-    date_filter = (
-        f"n.year = '{day:%Y}' AND n.month = '{day:%m}' AND n.day = '{day:%d}'"
-    )
+    date_filter = f"n.year = '{day:%Y}' AND n.month = '{day:%m}' AND n.day = '{day:%d}'"
     sql = f"{base}\n{tail_body}"
     return sql.format(
         date_filter=date_filter,
@@ -221,7 +276,7 @@ def build_day(athena: Athena, day: date) -> dict[str, Any]:
 
 
 def upsert_trend(
-    output: Path,
+    output: Output,
     day: date,
     hours: int,
     operators: list[dict[str, Any]] | None = None,
@@ -233,10 +288,8 @@ def upsert_trend(
     Days with no hours are treated as pipeline gaps and left out entirely, so a
     missing partition never renders as a day on which nothing went wrong.
     """
-    path = output / "trend.json"
-    days: list[dict[str, Any]] = []
-    if path.exists():
-        days = json.loads(path.read_text()).get("days", [])
+    existing = output.read("trend.json")
+    days: list[dict[str, Any]] = json.loads(existing)["days"] if existing else []
 
     key = f"{day:%Y-%m-%d}"
     days = [d for d in days if d["d"] != key]
@@ -247,7 +300,7 @@ def upsert_trend(
         days.append(point)
     days.sort(key=lambda d: d["d"])
 
-    path.write_text(json.dumps({"days": days}, separators=(",", ":")))
+    output.write("trend.json", json.dumps({"days": days}, separators=(",", ":")))
     return days
 
 
@@ -255,6 +308,47 @@ def rolling_average(days: list[dict[str, Any]], upto: date, window: int) -> floa
     key = f"{upto:%Y-%m-%d}"
     history = [d["h"] for d in days if d["d"] <= key][-window:]
     return sum(history) / len(history) if history else 0.0
+
+
+def run(athena: Athena, output: Output, day: date) -> dict[str, Any]:
+    """Build one day and write both files. Shared by the CLI and the Lambda."""
+    payload = build_day(athena, day)
+
+    days = upsert_trend(output, day, payload["passenger_hours"], payload["operators"])
+    avg_28 = rolling_average(days, day, 28)
+    payload["avg_7d"] = round(rolling_average(days, day, 7))
+    payload["avg_28d"] = round(avg_28)
+    payload["delta_28d_pct"] = round((payload["passenger_hours"] / avg_28 - 1) * 100, 1) if avg_28 else 0.0
+
+    output.write("latest.json", json.dumps(payload, indent=1))
+    return payload
+
+
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Lambda entrypoint. Builds yesterday unless the event names a date.
+
+    Deliberately raises when the partition is missing. A dashboard that quietly
+    stops updating is the failure this project already lived through; a failed
+    invocation is visible in CloudWatch and can be alarmed on.
+    """
+    day = (
+        date.fromisoformat(event["date"])
+        if isinstance(event, dict) and event.get("date")
+        else date.today() - timedelta(days=1)
+    )
+    athena = Athena(
+        database=os.environ.get("ATHENA_DATABASE", "uk_rail"),
+        workgroup=os.environ["ATHENA_WORKGROUP"],
+        results=os.environ.get("ATHENA_RESULTS", ""),
+        region=os.environ.get("AWS_REGION", "eu-west-1"),
+    )
+    payload = run(athena, Output(os.environ["OUTPUT_LOCATION"]), day)
+    print(f"{day:%Y-%m-%d}  {payload['passenger_hours']:,} passenger-hours "
+          f"({payload['delta_28d_pct']:+.1f}% vs 28-day average)")
+    return {
+        "service_date": payload["service_date"],
+        "passenger_hours": payload["passenger_hours"],
+    }
 
 
 def main() -> int:
@@ -266,19 +360,23 @@ def main() -> int:
         metavar=("START", "END"),
         help="Fill the trend series between two dates. Writes trend.json only.",
     )
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Directory for the JSON files.")
+    parser.add_argument(
+        "--output",
+        default=str(HERE.parent / "data"),
+        help="Directory or s3://bucket/prefix for the JSON files.",
+    )
     parser.add_argument("--database", default="uk_rail")
     parser.add_argument("--workgroup", default="primary")
     parser.add_argument("--region", default="eu-west-1")
     parser.add_argument(
         "--results",
-        required=True,
-        help="S3 location for Athena query results, e.g. s3://my-bucket/athena-results/",
+        default="",
+        help="S3 location for Athena query results. Omit if the workgroup sets its own.",
     )
     args = parser.parse_args()
 
     athena = Athena(args.database, args.workgroup, args.results, args.region)
-    args.output.mkdir(parents=True, exist_ok=True)
+    output = Output(args.output)
 
     if args.backfill:
         start = date.fromisoformat(args.backfill[0])
@@ -288,8 +386,7 @@ def main() -> int:
             try:
                 totals = national_hours(athena, day)
                 if totals and totals["passenger_hours"]:
-                    operators = operator_hours(athena, day)
-                    upsert_trend(args.output, day, totals["passenger_hours"], operators)
+                    upsert_trend(output, day, totals["passenger_hours"], operator_hours(athena, day))
                     print(f"{day:%Y-%m-%d}  {totals['passenger_hours']:>9,} h")
                 else:
                     print(f"{day:%Y-%m-%d}        gap — no rows for this partition")
@@ -299,18 +396,9 @@ def main() -> int:
         return 0
 
     day = date.fromisoformat(args.date) if args.date else date.today() - timedelta(days=1)
-    payload = build_day(athena, day)
-
-    days = upsert_trend(args.output, day, payload["passenger_hours"], payload["operators"])
-    avg_7 = rolling_average(days, day, 7)
-    avg_28 = rolling_average(days, day, 28)
-    payload["avg_7d"] = round(avg_7)
-    payload["avg_28d"] = round(avg_28)
-    payload["delta_28d_pct"] = round((payload["passenger_hours"] / avg_28 - 1) * 100, 1) if avg_28 else 0.0
-
-    (args.output / "latest.json").write_text(json.dumps(payload, indent=1))
+    payload = run(athena, output, day)
     print(f"{day:%Y-%m-%d}  {payload['passenger_hours']:,} passenger-hours  "
-          f"({payload['delta_28d_pct']:+.1f}% vs 28-day average)")
+          f"({payload['delta_28d_pct']:+.1f}% vs 28-day average)  ->  {output}")
     return 0
 
 

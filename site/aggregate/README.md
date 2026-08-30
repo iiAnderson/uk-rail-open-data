@@ -34,13 +34,17 @@ wrong. See [Known gaps](../../README.md#known-gaps).
 
 ## Running it daily
 
-Any scheduler works. The job needs `athena:*Query*`, `glue:GetTable`, and S3 read
-on the dataset plus write on your results bucket.
+`terraform/` deploys this as a Lambda on a 17:00 UTC schedule, which is the
+supported path — see [terraform/README.md](../../terraform/README.md).
+
+To run it anywhere else, the same file works unchanged. `--output` takes a
+local directory or an `s3://bucket/prefix`, and `handler()` is the Lambda
+entrypoint, configured through `ATHENA_DATABASE`, `ATHENA_WORKGROUP`,
+`ATHENA_RESULTS` and `OUTPUT_LOCATION`.
 
 ```cron
-30 4 * * *  cd /srv/uk-rail && python site/aggregate/aggregate.py \
-              --results s3://my-bucket/athena-results/ \
-            && aws s3 sync site/ s3://my-site-bucket/ --delete
+0 17 * * *  cd /srv/uk-rail && python site/aggregate/aggregate.py \
+              --output s3://my-site-bucket/data --workgroup my-workgroup
 ```
 
 With no `--date` it builds yesterday.

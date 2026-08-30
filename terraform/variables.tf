@@ -50,3 +50,35 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# --- the daily aggregation job ---------------------------------------------
+
+variable "enable_aggregator" {
+  description = "Deploy the Lambda that rebuilds the dashboard data each day. Set false to host the site only."
+  type        = bool
+  default     = true
+}
+
+variable "dataset_bucket" {
+  description = "The requester-pays bucket holding the rail dataset."
+  type        = string
+  default     = "darwin-connect"
+}
+
+variable "athena_database" {
+  description = "Glue database containing normalised_v1, odm_v1 and tiplocs — created by the DDL in athena/."
+  type        = string
+  default     = "uk_rail"
+}
+
+variable "aggregate_schedule" {
+  description = "When to rebuild. Defaults to 17:00 UTC, well after the upstream normalisation job has written the day's partition."
+  type        = string
+  default     = "cron(0 17 * * ? *)"
+}
+
+variable "athena_results_retention_days" {
+  description = "How long to keep raw Athena query output before deleting it."
+  type        = number
+  default     = 7
+}

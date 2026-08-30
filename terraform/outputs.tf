@@ -17,3 +17,13 @@ output "deploy_command" {
   description = "Copy-paste to publish the site."
   value       = "aws s3 sync ../site/ s3://${aws_s3_bucket.site.id}/ --delete"
 }
+
+output "aggregate_function_name" {
+  description = "Invoke manually with: aws lambda invoke --function-name <this> --payload '{\"date\":\"2026-05-16\"}' out.json"
+  value       = var.enable_aggregator ? aws_lambda_function.aggregate[0].function_name : null
+}
+
+output "athena_workgroup" {
+  description = "Workgroup with requester-pays enabled. Use it for your own queries too."
+  value       = var.enable_aggregator ? aws_athena_workgroup.aggregate[0].name : null
+}
