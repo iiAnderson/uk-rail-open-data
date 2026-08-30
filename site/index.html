@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Passenger Hours — the time Britain's railway takes from its passengers</title>
+<meta name="description" content="How much passenger time the British rail network loses each day, weighted by the journeys people actually make.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@1,300&display=swap">
+<style>
+:root{
+  --bg:#0d1013; --raised:#15191d; --hero:#f2f5f7; --ink:#e3e7ea; --ink2:#969a9f;
+  --muted:#666b70; --rule:#292d31; --rs:#1d2125;
+  --accent:#be8700; --accent-dim:#8c5500; --bad:#e45d58; --good:#2faa78;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;font-size:14px}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:#d9a11a;text-decoration:underline}
+.wrap{max-width:1320px;margin:0 auto;padding:34px 56px 48px}
+.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.hd{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted)}
+.rule{height:1px;background:var(--rule)}
+.rs{height:1px;background:var(--rs)}
+.cell{padding:7px 0}
+.track{height:5px;background:var(--rs);border-radius:2.5px;overflow:hidden}
+.fill{height:5px;background:var(--accent);border-radius:0 2.5px 2.5px 0}
+
+/* masthead */
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--accent)}
+.chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--accent);
+      border:1px solid #3b3121;border-radius:2px;padding:3px 7px}
+
+/* hero */
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:48px;
+      margin-top:16px;flex-wrap:wrap}
+.figure{font-size:clamp(56px,11vw,148px);font-weight:600;letter-spacing:-.045em;
+        line-height:.86;color:var(--hero)}
+.stats{display:flex;gap:44px;padding-bottom:14px}
+.stat-v{font-family:var(--mono);font-size:30px;font-weight:500;margin-top:7px;letter-spacing:-.02em}
+.standfirst{font-family:var(--serif);font-style:italic;font-weight:300;
+            font-size:clamp(18px,2.2vw,25px);line-height:1.44;color:#a0a5ab;
+            max-width:800px;margin-top:30px;text-wrap:pretty}
+
+/* split */
+.split{display:flex;height:30px;margin-top:14px;gap:2px}
+.split div{display:flex;align-items:center;padding-left:14px;overflow:hidden;white-space:nowrap;min-width:0}
+.split span{font-family:var(--mono);font-size:12px;font-weight:600}
+
+/* chart */
+.chartbox{position:relative;margin-top:12px}
+.tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .1s;
+     background:var(--raised);border:1px solid var(--rule);border-radius:3px;
+     padding:7px 10px;font-family:var(--mono);font-size:11px;white-space:nowrap;z-index:2}
+.tip b{color:var(--accent);font-weight:600}
+details{margin-top:10px}
+summary{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+        color:var(--muted);cursor:pointer}
+summary:hover{color:var(--ink2)}
+.datatable{width:100%;border-collapse:collapse;margin-top:10px;font-family:var(--mono);font-size:11px}
+.datatable th{text-align:left;color:var(--muted);font-weight:500;padding:4px 8px 4px 0;
+              border-bottom:1px solid var(--rule)}
+#trendsvg text{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.datatable td{padding:3px 8px 3px 0;border-bottom:1px solid var(--rs)}
+
+/* tables */
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:56px;margin-top:20px}
+.rowgrid{display:grid;gap:12px;align-items:center}
+.rowgrid>*{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ops{grid-template-columns:36px 1fr 78px 62px 68px}
+.stn{grid-template-columns:44px 1fr 108px 78px}
+.rsn{grid-template-columns:1fr 120px 48px}
+.reasons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 56px}
+
+.banner{background:var(--raised);border:1px solid #3b3121;border-radius:3px;
+        padding:12px 16px;margin-bottom:24px;font-size:13px;color:#d7c9a8}
+.foot{font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--muted);max-width:900px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.loading{color:var(--muted);font-family:var(--mono);font-size:12px;padding:60px 0}
+
+@media (max-width:900px){
+  .wrap{padding:24px 20px 36px}
+  .cols,.reasons{grid-template-columns:minmax(0,1fr);gap:32px}
+  .stats{gap:28px}
+  .ops{grid-template-columns:32px 1fr 62px 48px}
+  .stn{grid-template-columns:38px 1fr 66px}
+  .sparkcell,.barcell{display:none!important}
+  /* Two nowrap labels side by side cannot fit a phone; stack them. */
+  .split{flex-direction:column;height:auto;gap:3px}
+  .split div{height:26px;border-radius:3px!important}
+  .split span{font-size:11px}
+  .rsn{grid-template-columns:1fr 70px 44px}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">Loading…</div></div>
+
+<script>
+const fmt  = n => Math.round(n).toLocaleString('en-GB');
+const esc  = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dfmt = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB',
+  {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'UTC'});
+const dshort = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB',
+  {day:'numeric', month:'short', timeZone:'UTC'});
+
+/* ---- trend chart -------------------------------------------------------- */
+const CW = 1180, CH = 210, PAD_L = 56, PAD_T = 10, AXIS = 32;
+
+function niceTicks(max){
+  const step = Math.pow(10, Math.floor(Math.log10(max))) / 2;
+  const ticks = [];
+  for (let v = 0; v <= max; v += step) ticks.push(v);
+  return ticks.length > 5 ? ticks.filter((_, i) => i % 2 === 0) : ticks;
+}
+
+function trendChart(days){
+  if (!days.length) return '<div class="loading">No trend data yet.</div>';
+  const vals = days.map(d => d.h);
+  const top  = Math.max(...vals) * 1.12;
+  const x = i => days.length === 1 ? 0 : i * CW / (days.length - 1);
+  const y = v => PAD_T + (CH - PAD_T) * (1 - v / top);
+  const pts = days.map((d, i) => [x(i), y(d.h)]);
+  const line = 'M ' + pts.map(p => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L ');
+  const area = `${line} L ${CW} ${CH} L 0 ${CH} Z`;
+  const last = pts[pts.length - 1];
+
+  const grid = niceTicks(top).map(v => `
+    <line x1="0" y1="${y(v).toFixed(1)}" x2="${CW}" y2="${y(v).toFixed(1)}"
+          stroke="${v === 0 ? '#292d31' : '#1d2125'}" stroke-width="1"/>
+    <text x="-12" y="${(y(v) + 4).toFixed(1)}" text-anchor="end"
+          font-size="10" fill="#666b70">${fmt(v)}</text>`).join('');
+
+  const labels = [0, Math.floor(days.length / 2), days.length - 1].map((i, n) => `
+    <text x="${x(i).toFixed(1)}" y="${CH + 22}" font-size="10"
+          fill="#666b70" text-anchor="${n === 0 ? 'start' : n === 1 ? 'middle' : 'end'}"
+          >${dshort(days[i].d).toUpperCase()}</text>`).join('');
+
+  return `
+  <div class="chartbox">
+    <svg viewBox="0 0 ${CW + PAD_L + 8} ${CH + AXIS + PAD_T}" style="width:100%;display:block"
+         id="trendsvg" role="img" aria-label="Daily passenger-hours lost">
+      <g transform="translate(${PAD_L},0)">
+        ${grid}
+        <path d="${area}" fill="#be8700" fill-opacity="0.12"/>
+        <path d="${line}" fill="none" stroke="#be8700" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+        <line id="crosshair" y1="${PAD_T}" y2="${CH}" stroke="#666b70" stroke-width="1" opacity="0"/>
+        <circle id="hoverdot" r="4.5" fill="#be8700" stroke="#0d1013" stroke-width="2" opacity="0"/>
+        <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4.5"
+                fill="#be8700" stroke="#0d1013" stroke-width="2"/>
+        <text x="${(last[0] - 12).toFixed(1)}" y="${(last[1] - 14).toFixed(1)}" text-anchor="end"
+              font-size="12" font-weight="600" fill="#e3e7ea">${fmt(vals[vals.length-1])}</text>
+        ${labels}
+      </g>
+    </svg>
+    <div class="tip" id="tip"></div>
+  </div>
+  <details>
+    <summary>Show these figures as a table</summary>
+    <table class="datatable">
+      <thead><tr><th>Service day</th><th>Passenger-hours lost</th></tr></thead>
+      <tbody>${days.map(d => `<tr><td>${d.d}</td><td>${fmt(d.h)}</td></tr>`).join('')}</tbody>
+    </table>
+  </details>`;
+}
+
+function wireHover(days){
+  const svg = document.getElementById('trendsvg');
+  if (!svg || !days.length) return;
+  const tip = document.getElementById('tip');
+  const cross = document.getElementById('crosshair');
+  const dot = document.getElementById('hoverdot');
+  const vals = days.map(d => d.h);
+  const top = Math.max(...vals) * 1.12;
+
+  const move = ev => {
+    const box = svg.getBoundingClientRect();
+    const scale = (CW + PAD_L + 8) / box.width;
+    const svgX = (ev.clientX - box.left) * scale - PAD_L;
+    let i = Math.round(svgX / (CW / Math.max(1, days.length - 1)));
+    i = Math.max(0, Math.min(days.length - 1, i));
+    const px = days.length === 1 ? 0 : i * CW / (days.length - 1);
+    const py = PAD_T + (CH - PAD_T) * (1 - days[i].h / top);
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('opacity', '1');
+    dot.setAttribute('cx', px); dot.setAttribute('cy', py); dot.setAttribute('opacity', '1');
+    tip.innerHTML = `${dshort(days[i].d)} &middot; <b>${fmt(days[i].h)}</b> hours`;
+    tip.style.opacity = '1';
+    const left = (px + PAD_L) / scale;
+    tip.style.left = Math.min(box.width - tip.offsetWidth - 4, Math.max(0, left - tip.offsetWidth / 2)) + 'px';
+    tip.style.top = Math.max(0, py / scale - 40) + 'px';
+  };
+  svg.addEventListener('mousemove', move);
+  svg.addEventListener('mouseleave', () => {
+    tip.style.opacity = '0'; cross.setAttribute('opacity', '0'); dot.setAttribute('opacity', '0');
+  });
+}
+
+/* ---- sparkline ---------------------------------------------------------- */
+function sparkline(series){
+  if (series.length < 2) return '';
+  const min = Math.min(...series), max = Math.max(...series);
+  const span = (max - min) || 1;
+  const pts = series.map((v, i) => [i * 60 / (series.length - 1), 16 - ((v - min) / span) * 16]);
+  const d = 'M ' + pts.map(p => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L ');
+  const last = pts[pts.length - 1];
+  return `<svg viewBox="-1 -2 66 20" width="64" height="18" class="spark" aria-hidden="true">
+    <path d="${d}" fill="none" stroke="#be8700" stroke-width="1.3" stroke-linejoin="round"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.2" fill="#be8700"/></svg>`;
+}
+
+/* ---- render ------------------------------------------------------------- */
+function render(data, trend){
+  const days = trend.days || [];
+  const recent = days.slice(-28);
+  const hoursTotal = data.passenger_hours;
+  const pctDelays = hoursTotal ? data.hours_delays / hoursTotal * 100 : 0;
+  const pctCancel = hoursTotal ? data.hours_cancellations / hoursTotal * 100 : 0;
+  const years = (hoursTotal / 8760).toFixed(1);
+  const topReason = (data.reasons || []).find(r => r.reason !== 'Not stated');
+  const delta = data.delta_28d_pct ?? 0;
+  const deltaColour = delta > 0 ? 'var(--bad)' : delta < 0 ? 'var(--good)' : 'var(--ink)';
+
+  // Operator sparklines come from the per-day history in trend.json.
+  const sparkFor = toc => sparkline(
+    days.slice(-84).map(d => (d.toc || {})[toc]).filter(v => typeof v === 'number'));
+
+  const maxOpHours  = Math.max(...(data.operators || [{hours:1}]).map(o => o.hours), 1);
+  const maxStnHours = Math.max(...(data.stations  || [{hours:1}]).map(s => s.hours), 1);
+  const statedReasons = (data.reasons || []).filter(r => r.reason !== 'Not stated');
+  const notStated = (data.reasons || []).find(r => r.reason === 'Not stated');
+  const maxReasonPc = Math.max(...(statedReasons.length ? statedReasons : [{pct:1}]).map(r => r.pct), 1);
+
+  const staleDays = Math.floor((Date.now() - new Date(data.service_date + 'T00:00:00Z')) / 86400000);
+  const banner = staleDays > 2 ? `<div class="banner">
+      These figures are for ${esc(dfmt(data.service_date))} &mdash; ${staleDays} days ago.
+      No newer service day has been published yet.</div>` : '';
+
+  document.getElementById('app').innerHTML = `
+  <h1 class="vh">Passenger-hours lost on the GB rail network, ${esc(dfmt(data.service_date))}</h1>
+  <div class="masthead">
+    <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+      <div class="brand">PASSENGER&#8209;HOURS&nbsp;LOST</div>
+      <div class="hd" style="letter-spacing:.12em">The time Britain&rsquo;s railway takes from its passengers</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="chip">GB RAIL NETWORK</span>
+      <span class="m" style="font-size:11px;color:var(--ink2)">${esc(data.service_date)}</span>
+    </div>
+  </div>
+  <div class="rule" style="margin:16px 0 28px"></div>
+  ${banner}
+
+  <div class="hd">Passenger-hours lost &middot; ${esc(dfmt(data.service_date))}</div>
+  <div class="hero">
+    <div class="figure">${fmt(hoursTotal)}</div>
+    <div class="stats">
+      <div>
+        <div class="hd">vs 28-day average</div>
+        <div class="stat-v" style="color:${deltaColour}">${delta > 0 ? '+' : ''}${delta.toFixed(1)}%</div>
+        <div class="m" style="font-size:11px;color:var(--muted);margin-top:3px">${fmt(data.avg_28d || 0)} h</div>
+      </div>
+      <div>
+        <div class="hd">7-day average</div>
+        <div class="stat-v">${fmt(data.avg_7d || 0)}</div>
+        <div class="m" style="font-size:11px;color:var(--muted);margin-top:3px">hours per day</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="standfirst">
+    Equivalent to ${years} years of human time, lost in a single day across
+    ${fmt(data.services)} passenger services.${topReason ?
+      ` The largest identified cause was &ldquo;${esc(topReason.reason)}&rdquo;, at ${topReason.pct.toFixed(1)}% of the total.` : ''}
+  </div>
+
+  <div class="rule" style="margin:32px 0 24px"></div>
+
+  <h2 class="hd" style="font:inherit;font-size:9.5px;margin:0">How the time was lost</h2>
+  <div class="split">
+    <div style="flex-grow:${pctDelays};background:var(--accent);border-radius:3px 0 0 3px">
+      <span style="color:#1a1200">Delays &middot; ${fmt(data.hours_delays)} h &middot; ${pctDelays.toFixed(0)}%</span>
+    </div>
+    <div style="flex-grow:${pctCancel};background:var(--accent-dim);border-radius:0 3px 3px 0">
+      <span style="color:#f7e9d2">Cancellations &middot; ${fmt(data.hours_cancellations)} h &middot; ${pctCancel.toFixed(0)}%</span>
+    </div>
+  </div>
+
+  <div class="rule" style="margin:32px 0 24px"></div>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">
+    <div class="hd">Daily total &middot; last ${recent.length} days</div>
+    <div class="m" style="font-size:10px;color:var(--muted)">weekday peaks, weekend troughs</div>
+  </div>
+  ${trendChart(recent)}
+
+  <div class="rule" style="margin:30px 0 0"></div>
+
+  <div class="cols">
+    <div>
+      <h2 class="hd" style="font-size:9.5px;margin:0 0 10px">By operator</h2>
+      <div class="rowgrid ops">
+        <div class="hd cell">Toc</div><div class="hd cell">Operator</div>
+        <div class="hd cell" style="text-align:right">Hours</div>
+        <div class="hd cell" style="text-align:right">H/1k jny</div>
+        <div class="hd cell sparkcell" style="text-align:right">Trend</div>
+      </div>
+      <div class="rule"></div>
+      ${(data.operators || []).map(o => `
+        <div class="rs"></div>
+        <div class="rowgrid ops">
+          <div class="m cell" style="font-size:11px;color:var(--accent)">${esc(o.toc)}</div>
+          <div class="cell" style="font-size:12.5px">${esc(o.name)}</div>
+          <div class="m cell" style="font-size:12.5px;text-align:right">${fmt(o.hours)}</div>
+          <div class="m cell" style="font-size:12.5px;text-align:right;color:var(--ink2)">${o.per_1k}</div>
+          <div class="cell sparkcell" style="display:flex;justify-content:flex-end">${sparkFor(o.toc)}</div>
+        </div>`).join('')}
+      ${data.operators_other && data.operators_other.count ? `
+        <div class="rowgrid ops" style="padding-top:3px">
+          <div class="m cell" style="font-size:11px;color:var(--muted)">&mdash;</div>
+          <div class="cell" style="font-size:12px;color:var(--muted)">${data.operators_other.count} others</div>
+          <div class="m cell" style="font-size:12px;text-align:right;color:var(--muted)">${fmt(data.operators_other.hours)}</div>
+          <div></div><div class="sparkcell"></div>
+        </div>` : ''}
+    </div>
+
+    <div>
+      <h2 class="hd" style="font-size:9.5px;margin:0 0 10px">By station &middot; hours lost by passengers arriving here</h2>
+      <div class="rowgrid stn">
+        <div class="hd cell">Crs</div><div class="hd cell">Station</div>
+        <div class="hd cell barcell"></div><div class="hd cell" style="text-align:right">Hours</div>
+      </div>
+      <div class="rule"></div>
+      ${(data.stations || []).map(s => `
+        <div class="rs"></div>
+        <div class="rowgrid stn">
+          <div class="m cell" style="font-size:11px;color:var(--accent)">${esc(s.crs)}</div>
+          <div class="cell" style="font-size:12.5px">${esc(s.name)}</div>
+          <div class="cell barcell"><div class="track"><div class="fill" style="width:${s.hours/maxStnHours*100}%"></div></div></div>
+          <div class="m cell" style="font-size:12.5px;text-align:right">${fmt(s.hours)}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="rule" style="margin:26px 0 0"></div>
+
+  <h2 class="hd" style="font-size:9.5px;margin:20px 0 10px">By reason code &middot; share of hours lost</h2>
+  <div class="reasons">
+    ${statedReasons.map(r => `
+      <div class="rowgrid rsn">
+        <div style="font-size:12.5px">${esc(r.reason)}</div>
+        <div class="track"><div class="fill" style="width:${Math.min(100, r.pct/maxReasonPc*100)}%"></div></div>
+        <div class="m" style="font-size:12.5px;text-align:right">${r.pct.toFixed(1)}%</div>
+      </div>`).join('')}
+  </div>
+  <div class="m" style="font-size:11px;color:var(--muted);margin-top:16px">
+    ${notStated ? `${notStated.pct.toFixed(1)}% of lost time has no stated cause &mdash; Darwin supplies a reason
+       on only a minority of services. ` : ''}${data.reasons_other && data.reasons_other.count ?
+      `${data.reasons_other.count} further reasons account for ${data.reasons_other.pct}%.` : ''}
+  </div>
+
+  ${data.worst_service && data.worst_service.rid ? `
+  <div class="rule" style="margin:26px 0 20px"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap">
+    <div>
+      <div class="hd">The single costliest train</div>
+      <div style="font-size:18px;font-weight:600;margin-top:8px">
+        <span class="m">${esc(data.worst_service.train_id || data.worst_service.rid)}</span>
+        &middot; ${esc((data.worst_service.sched_dep || '').slice(0,5))}
+        ${esc(data.worst_service.origin)} &rarr; ${esc(data.worst_service.destination)}
+      </div>
+      <div style="font-size:13px;color:var(--ink2);margin-top:4px">
+        ${esc(data.worst_service.toc_name)} &middot; ${esc((data.worst_service.status || '').replace(/_/g,' '))}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="m" style="font-size:38px;font-weight:500;color:var(--accent);letter-spacing:-.03em;line-height:1">${fmt(data.worst_service.hours)}</div>
+      <div class="hd" style="margin-top:5px">passenger-hours</div>
+    </div>
+  </div>` : ''}
+
+  <div class="rule" style="margin:26px 0 14px"></div>
+  <div class="foot">
+    METHOD &middot; delay and cancellation minutes from the National Rail Darwin feed, weighted by
+    station&#8209;to&#8209;station journey volumes (ODM ${esc((data.method||{}).odm_financial_year || '')}).
+    H/1K JNY normalises by traffic, so a small operator is not flattered by a small passenger base.
+    Built ${esc((data.generated_at || '').slice(0,16).replace('T',' '))} UTC.
+    Source data and queries: <a href="https://github.com/iiAnderson/uk-rail-open-data">github.com/iiAnderson/uk-rail-open-data</a>.
+    Contains information from National Rail Enquiries.
+  </div>`;
+
+  wireHover(recent);
+}
+
+Promise.all([
+  fetch('data/latest.json').then(r => r.json()),
+  fetch('data/trend.json').then(r => r.json()).catch(() => ({days: []})),
+]).then(([data, trend]) => render(data, trend))
+  .catch(err => {
+    document.getElementById('app').innerHTML =
+      '<div class="loading">Could not load the data for this page.</div>';
+    console.error(err);
+  });
+</script>
+</body>
+</html>
