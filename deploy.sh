@@ -46,11 +46,15 @@ aws s3 sync "$STAGE"/ "s3://$BUCKET/" --delete --exclude 'data/*'
 echo "deployed to s3://$BUCKET/ (data/ left alone — the Lambdas own it)"
 
 # The pages carry an hour-long TTL, so without this a deploy is invisible for up
-# to an hour. Only the HTML needs it: /data/* has its own short TTL and is
-# rewritten by the Lambdas, not by this script. The first 1,000 invalidation
-# paths a month are free.
+# to an hour. /tracks/* is in here too: geometry.json is deployed like the HTML
+# and cached just as long, and the page reads fields from it, so serving a new
+# page against last hour's geometry breaks the section panel. /data/* is not —
+# it has its own short TTL and is rewritten by the Lambdas, not by this script.
+# The first 1,000 invalidation paths a month are free.
 if [ -n "$DISTRIBUTION" ]; then
-  ID=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION"          --paths '/' '/index.html' '/tracks.html'          --query 'Invalidation.Id' --output text)
+  ID=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" \
+         --paths '/' '/index.html' '/tracks.html' '/tracks/*' \
+         --query 'Invalidation.Id' --output text)
   echo "invalidating $DISTRIBUTION ($ID)"
   aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION" --id "$ID"
   echo "invalidation complete"

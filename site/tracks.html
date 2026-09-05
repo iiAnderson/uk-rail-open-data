@@ -201,7 +201,9 @@ const cache = new Map();
 
 const station = tpl => (GEO.names[tpl] || tpl);
 const reason  = code => (GEO.reasons[code] || 'Reason ' + code);
-const operator = toc => (GEO.tocs[toc] || toc);
+// Tolerates a geometry file older than this page — a CDN can briefly serve
+// one — by falling back to the bare operator code rather than throwing.
+const operator = toc => ((GEO.tocs || {})[toc] || toc);
 
 /* ------------------------------------------------------------ period data */
 async function loadPeriod(kind, key){
