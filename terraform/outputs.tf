@@ -14,8 +14,8 @@ output "site_url" {
 }
 
 output "deploy_command" {
-  description = "Copy-paste to publish the site."
-  value       = "aws s3 sync ../site/ s3://${aws_s3_bucket.site.id}/ --delete"
+  description = "Copy-paste to publish the site. Use deploy.sh rather than a bare sync: it substitutes the basemap key, which is deliberately not in the repository."
+  value       = "CARTO_KEY=your_key ../deploy.sh"
 }
 
 output "aggregate_function_name" {

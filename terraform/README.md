@@ -7,7 +7,7 @@ is specific to this project — point it at any directory of static files.
 cp terraform.tfvars.example terraform.tfvars   # set project_name at minimum
 terraform init
 terraform apply
-aws s3 sync ../site/ "s3://$(terraform output -raw bucket_name)/" --delete
+CARTO_KEY=your_key ../deploy.sh
 terraform output site_url
 ```
 
@@ -96,8 +96,15 @@ python aggregate/aggregate.py \
 Then upload the page itself, which the Lambda never touches:
 
 ```bash
-aws s3 sync site/ "s3://$(terraform -chdir=terraform output -raw bucket_name)/" --delete
+CARTO_KEY=your_key ./deploy.sh
 ```
+
+`deploy.sh` is a sync with one substitution: `__CARTO_KEY__` in the HTML is
+replaced with the basemap key on the way up. The key is not in the repository —
+it ships in client-side JavaScript, so anyone viewing the map can read it, and
+committing it would let anyone spend the quota. Deploying without `CARTO_KEY`
+works fine; CARTO just stamps "API KEY REQUIRED" across the basemap tiles. Free
+key, no account needed, at <https://carto.com/basemaps/apikey/>.
 
 ### Running it by hand
 
