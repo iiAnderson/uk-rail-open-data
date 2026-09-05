@@ -47,6 +47,30 @@ each train carries roughly 0.9 of those journeys.
 
 An estimate, not a headcount — see the caveats in [DATA.md](../DATA.md).
 
+### The coverage guard
+
+That divisor assumes the day's data contains every service offering a pair. Some
+of the time it does not, and then the few services that do appear absorb the
+whole day's demand.
+
+Ashford to St Pancras is the worked example. It carries 1,682 journeys a day, and
+across four sampled Tuesdays **not one service in this dataset calls at both
+stations** — Southeastern's HS1 services are not present as through-services.
+When a charter finally did, it was handed all 1,682 passengers, and being
+cancelled was charged the full two-hour wait for each: 10,440 passenger-hours
+from a single train.
+
+The cause is not knowable from the data, but the symptom is: if dividing a pair's
+demand by the services carrying it implies more passengers than a train can hold,
+the service count is wrong. Those pairs are dropped rather than guessed at, and
+`national.sql` reports `excluded_pairs` and `excluded_journeys` so the omission
+stays visible.
+
+On 2026-09-01 that excluded 5 pairs and 7,117 journeys — 0.23% of the day's
+estimated total. All five were high-demand pairs showing exactly one service:
+three on HS1, one Elizabeth line, one Heathrow. Watch the excluded share: if it
+climbs, the upstream service data is losing coverage, not the railway improving.
+
 ### How lost time is counted
 
 | | |
@@ -63,14 +87,16 @@ one of four trains to a rural station costs them the cap (two hours by default).
 Real output for 2026-05-16, a Saturday:
 
 ```
-passenger_hours        117,660
-hours_delays            88,374   (75%)
-hours_cancellations     29,286   (25%)
-services                22,826
-journeys_estimated   2,975,127
+passenger_hours        190,565
+hours_delays          140,350   (74%)
+hours_cancellations    50,215   (26%)
+services               23,582
+journeys_estimated  3,069,016
+excluded_pairs              5
+excluded_journeys       7,117
 ```
 
-About 2.4 minutes lost per journey made. The per-operator view is where it gets
+That is 2026-09-01. About 3.7 minutes lost per journey made. The per-operator view is where it gets
 interesting — CrossCountry lost 157 hours per thousand journeys that day against
 Thameslink's 34, a gap that ranking by raw hours completely hides.
 

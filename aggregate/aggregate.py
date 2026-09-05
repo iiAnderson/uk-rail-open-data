@@ -48,6 +48,11 @@ ODM_FINANCIAL_YEAR = "20242025"
 OPERATING_DAY_MINS = 1080
 WAIT_CAP_MINS = 120
 
+# Coverage guard. If dividing a pair's daily demand by the services carrying it
+# implies more passengers than a train can hold, the service count is wrong and
+# the pair is dropped. See the comment in queries/_base_passenger_hours.sql.
+MAX_TRAIN_LOAD = 1000
+
 TOC_NAMES: dict[str, str] = json.loads((HERE / "toc_names.json").read_text())
 
 # Darwin reports delay and cancellation reasons as numeric codes. The same code
@@ -171,6 +176,7 @@ def load_sql(name: str, day: date) -> str:
         odm_financial_year=ODM_FINANCIAL_YEAR,
         operating_day_mins=OPERATING_DAY_MINS,
         wait_cap_mins=WAIT_CAP_MINS,
+        max_train_load=MAX_TRAIN_LOAD,
     )
 
 
@@ -192,6 +198,8 @@ def national_hours(athena: Athena, day: date) -> dict[str, Any]:
         "hours_delays": round(_f(row["hours_delays"])),
         "hours_cancellations": round(_f(row["hours_cancellations"])),
         "services": int(_f(row["services"])),
+        "excluded_pairs": int(_f(row.get("excluded_pairs"))),
+        "excluded_journeys": round(_f(row.get("excluded_journeys"))),
     }
 
 
@@ -271,6 +279,7 @@ def build_day(athena: Athena, day: date) -> dict[str, Any]:
             "odm_financial_year": ODM_FINANCIAL_YEAR,
             "operating_day_mins": OPERATING_DAY_MINS,
             "wait_cap_mins": WAIT_CAP_MINS,
+            "max_train_load": MAX_TRAIN_LOAD,
         },
     }
 

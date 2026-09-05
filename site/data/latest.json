@@ -1,189 +1,192 @@
 {
- "generated_at": "2026-08-30T10:13:11+00:00",
- "service_date": "2026-05-16",
- "passenger_hours": 117660,
- "hours_delays": 88374,
- "hours_cancellations": 29286,
- "services": 22826,
+ "generated_at": "2026-09-05T07:03:54+00:00",
+ "service_date": "2026-09-01",
+ "passenger_hours": 190565,
+ "hours_delays": 140350,
+ "hours_cancellations": 50215,
+ "services": 23582,
+ "excluded_pairs": 5,
+ "excluded_journeys": 7117,
  "operators": [
   {
-   "toc": "SW",
-   "name": "South Western Railway",
-   "hours": 13829,
-   "per_1k": 40.3
+   "toc": "SE",
+   "name": "Southeastern",
+   "hours": 20179,
+   "per_1k": 75.6
+  },
+  {
+   "toc": "SN",
+   "name": "Southern",
+   "hours": 19648,
+   "per_1k": 84.6
   },
   {
    "toc": "GW",
    "name": "Great Western Railway",
-   "hours": 11997,
-   "per_1k": 69.6
-  },
-  {
-   "toc": "SE",
-   "name": "Southeastern",
-   "hours": 9759,
-   "per_1k": 38.3
-  },
-  {
-   "toc": "XC",
-   "name": "CrossCountry",
-   "hours": 9391,
-   "per_1k": 157.2
-  },
-  {
-   "toc": "NT",
-   "name": "Northern",
-   "hours": 7714,
-   "per_1k": 35.1
-  },
-  {
-   "toc": "GR",
-   "name": "LNER",
-   "hours": 6904,
-   "per_1k": 121.4
+   "hours": 15463,
+   "per_1k": 88.7
   },
   {
    "toc": "TL",
    "name": "Thameslink",
-   "hours": 6419,
-   "per_1k": 34.2
+   "hours": 13081,
+   "per_1k": 66.9
   },
   {
-   "toc": "VT",
-   "name": "Avanti West Coast",
-   "hours": 6016,
-   "per_1k": 87.7
+   "toc": "SW",
+   "name": "South Western Railway",
+   "hours": 12652,
+   "per_1k": 36.6
+  },
+  {
+   "toc": "XC",
+   "name": "CrossCountry",
+   "hours": 11388,
+   "per_1k": 180.9
+  },
+  {
+   "toc": "LO",
+   "name": "London Overground",
+   "hours": 10703,
+   "per_1k": 37.2
+  },
+  {
+   "toc": "GN",
+   "name": "Great Northern",
+   "hours": 10050,
+   "per_1k": 104.4
+  },
+  {
+   "toc": "NT",
+   "name": "Northern",
+   "hours": 9148,
+   "per_1k": 41.6
   },
   {
    "toc": "LM",
    "name": "West Midlands Trains",
-   "hours": 5945,
-   "per_1k": 37.4
-  },
-  {
-   "toc": "SR",
-   "name": "ScotRail",
-   "hours": 5587,
-   "per_1k": 35.5
+   "hours": 8413,
+   "per_1k": 53.4
   }
  ],
  "operators_other": {
-  "count": 20,
-  "hours": 34096
+  "count": 21,
+  "hours": 59842
  },
  "stations": [
   {
    "crs": "LBG",
    "name": "London Bridge",
-   "hours": 4494
-  },
-  {
-   "crs": "WAT",
-   "name": "London Waterloo",
-   "hours": 4159
+   "hours": 6965
   },
   {
    "crs": "KGX",
    "name": "London Kings Cross",
-   "hours": 3852
+   "hours": 6938
   },
   {
-   "crs": "EUS",
-   "name": "London Euston",
-   "hours": 3720
-  },
-  {
-   "crs": "VXH",
-   "name": "Vauxhall",
-   "hours": 3599
+   "crs": "VIC",
+   "name": "London Victoria",
+   "hours": 6545
   },
   {
    "crs": "PAD",
    "name": "London Paddington",
-   "hours": 3590
+   "hours": 5331
   },
   {
    "crs": "BHM",
    "name": "Birmingham New Street",
-   "hours": 2652
+   "hours": 4357
   },
   {
-   "crs": "MAN",
-   "name": "Manchester Piccadilly",
-   "hours": 2317
+   "crs": "EUS",
+   "name": "London Euston",
+   "hours": 4135
+  },
+  {
+   "crs": "VXH",
+   "name": "Vauxhall",
+   "hours": 3743
+  },
+  {
+   "crs": "GTW",
+   "name": "Gatwick Airport",
+   "hours": 3440
   }
  ],
  "reasons": [
   {
    "code": "Not stated",
    "reason": "Not stated",
-   "hours": 81436,
-   "pct": 69.2
-  },
-  {
-   "code": "574",
-   "reason": "A fault on this train",
-   "hours": 5217,
-   "pct": 4.4
-  },
-  {
-   "code": "526",
-   "reason": "A shortage of train drivers",
-   "hours": 4543,
-   "pct": 3.9
-  },
-  {
-   "code": "525",
-   "reason": "A shortage of train crew",
-   "hours": 3862,
-   "pct": 3.3
+   "hours": 126831,
+   "pct": 66.6
   },
   {
    "code": "832",
    "reason": "A fault with the signalling system",
-   "hours": 2899,
+   "hours": 11776,
+   "pct": 6.2
+  },
+  {
+   "code": "713",
+   "reason": "Failure of the electricity supply earlier today",
+   "hours": 6001,
+   "pct": 3.1
+  },
+  {
+   "code": "811",
+   "reason": "Damage to the overhead electric wires",
+   "hours": 4672,
    "pct": 2.5
   },
   {
-   "code": "535",
-   "reason": "A passenger being taken ill on a train",
-   "hours": 2309,
+   "code": "574",
+   "reason": "A fault on this train",
+   "hours": 4576,
+   "pct": 2.4
+  },
+  {
+   "code": "526",
+   "reason": "A shortage of train drivers",
+   "hours": 3773,
    "pct": 2.0
   },
   {
-   "code": "911",
-   "reason": "A fault on a train",
-   "hours": 2232,
-   "pct": 1.9
+   "code": "841",
+   "reason": "A speed restriction",
+   "hours": 3151,
+   "pct": 1.7
   },
   {
-   "code": "656",
-   "reason": "An obstruction on the track",
-   "hours": 1957,
-   "pct": 1.7
+   "code": "507",
+   "reason": "More trains than usual needing repairs at the same time",
+   "hours": 2724,
+   "pct": 1.4
   }
  ],
  "reasons_other": {
-  "count": 43,
-  "pct": 10.7
+  "count": 54,
+  "pct": 13.8
  },
  "worst_service": {
-  "rid": "202605168061875",
-  "train_id": "2K01",
-  "toc": "SW",
-  "toc_name": "South Western Railway",
-  "origin": "Kingston",
-  "destination": "London Waterloo",
-  "sched_dep": "05:59:00",
+  "rid": "202609016738101",
+  "train_id": "9W70",
+  "toc": "XR",
+  "toc_name": "Elizabeth line",
+  "origin": "Heathrow Terminal 5",
+  "destination": "London Paddington",
+  "sched_dep": "21:20:00",
   "status": "partially_cancelled",
-  "hours": 746
+  "hours": 4618
  },
  "method": {
   "odm_financial_year": "20242025",
   "operating_day_mins": 1080,
-  "wait_cap_mins": 120
+  "wait_cap_mins": 120,
+  "max_train_load": 1000
  },
- "avg_7d": 141394,
- "avg_28d": 153496,
- "delta_28d_pct": -23.3
+ "avg_7d": 210110,
+ "avg_28d": 244485,
+ "delta_28d_pct": -22.1
 }

@@ -45,6 +45,7 @@
 --   {odm_financial_year}  ODM partition to weight with, e.g. 20242025
 --   {operating_day_mins}  length of the service day in minutes (default 1080 = 05:00-23:00)
 --   {wait_cap_mins}       longest wait charged for a cancelled leg (default 120)
+--   {max_train_load}      most passengers one service can carry on one leg (default 1000)
 
 WITH stops_raw AS (
     SELECT
@@ -121,6 +122,41 @@ odm_daily AS (
     GROUP BY origin_crs, destination_crs
 ),
 
+-- Demand divided by the services that carry it.
+pair_load AS (
+    SELECT
+        f.origin_crs,
+        f.destination_crs,
+        f.services_today,
+        COALESCE(o.daily_journeys, 0)                       AS daily_journeys,
+        COALESCE(o.daily_journeys, 0) / f.services_today    AS passengers_per_service
+    FROM service_frequency f
+    LEFT JOIN odm_daily o
+      ON f.origin_crs = o.origin_crs
+     AND f.destination_crs = o.destination_crs
+),
+
+-- The coverage guard.
+--
+-- The divisor above assumes the day's data contains every service offering a
+-- pair. Where it does not, the few that appear absorb the entire day's demand.
+-- Ashford to St Pancras is the worked example: 1,682 journeys a day, and across
+-- four sampled Tuesdays not one service in this dataset calls at both stations.
+-- When a charter finally did, it was handed all 1,682 passengers and charged the
+-- full cancellation wait for each — 10,440 passenger-hours from a single train.
+--
+-- That is detectable without knowing the cause: if the implied load exceeds what
+-- a train can physically carry, the service count is wrong. Those pairs are
+-- dropped rather than guessed at, and national.sql reports how much was dropped
+-- so the omission stays visible instead of silently depressing the total.
+pair_load_usable AS (
+    SELECT * FROM pair_load WHERE passengers_per_service <= {max_train_load}
+),
+
+pair_load_excluded AS (
+    SELECT * FROM pair_load WHERE passengers_per_service > {max_train_load}
+),
+
 -- One row per leg, carrying its estimated passenger load and the time it cost them.
 lost AS (
     SELECT
@@ -130,22 +166,18 @@ lost AS (
         l.destination_crs,
         l.leg_cancelled,
         COALESCE(l.cancel_reason, l.delay_reason) AS reason,
-        COALESCE(o.daily_journeys, 0) / f.services_today AS passengers,
+        p.passengers_per_service AS passengers,
         CASE
             WHEN l.leg_cancelled
-                THEN (COALESCE(o.daily_journeys, 0) / f.services_today)
-                     * LEAST({operating_day_mins} / CAST(f.services_today AS DOUBLE),
+                THEN p.passengers_per_service
+                     * LEAST({operating_day_mins} / CAST(p.services_today AS DOUBLE),
                              CAST({wait_cap_mins} AS DOUBLE))
-            ELSE (COALESCE(o.daily_journeys, 0) / f.services_today)
-                 * CAST(l.arr_delay_mins AS DOUBLE)
+            ELSE p.passengers_per_service * CAST(l.arr_delay_mins AS DOUBLE)
         END AS lost_minutes
     FROM legs l
-    JOIN service_frequency f
-      ON l.origin_crs = f.origin_crs
-     AND l.destination_crs = f.destination_crs
-    LEFT JOIN odm_daily o
-      ON l.origin_crs = o.origin_crs
-     AND l.destination_crs = o.destination_crs
+    JOIN pair_load_usable p
+      ON l.origin_crs = p.origin_crs
+     AND l.destination_crs = p.destination_crs
 ),
 
 -- One name per CRS code, for labelling.

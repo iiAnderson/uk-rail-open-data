@@ -53,6 +53,11 @@ Worth knowing before you quote a number:
   by the number of services offering that pair on the day, which spreads demand
   evenly across the timetable. That under-weights the peak and over-weights the
   middle of the day.
+- **Some station pairs are dropped entirely.** Where the service data does not
+  show enough trains to carry a pair's known demand, that pair is excluded rather
+  than have its passengers attributed to whichever service happened to appear.
+  This slightly understates the total. `latest.json` carries the excluded counts;
+  see [queries/README.md](queries/README.md#the-coverage-guard).
 - **Reason codes are sparse.** Darwin supplies a reason on a minority of
   services. On a typical day around 70% of lost time has no stated cause, so
   treat the reason ranking as relative, not as a complete account.
