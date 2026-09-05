@@ -295,10 +295,16 @@ function drawMap(){
     const weight = weightOf(row.services, max);
     if (state.grey) {
       // An outline does the work colour would, so the shading stays readable.
-      L.polyline(row.geo.c, { color: '#0d1013', weight: weight + 2.5, opacity: .9 }).addTo(layer);
+      // It must not take clicks: it sits under the line it is outlining.
+      L.polyline(row.geo.c, {
+        color: '#0d1013', weight: weight + 2.5, opacity: .9, interactive: false,
+      }).addTo(layer);
     }
     const line = L.polyline(row.geo.c, {
       color: colourOf(row), weight, opacity: state.grey ? 1 : .82, lineCap: 'round',
+      // Without this the click reaches the map as well, and the map handler
+      // below clears the selection the click just made.
+      bubblingMouseEvents: false,
     }).addTo(layer);
     line.on('click', () => select(row.k, false));
     lines[row.k] = line;
@@ -555,13 +561,23 @@ async function boot(){
   GEO.byId = Object.fromEntries(geo.sections.map(s => [s.k, s]));
   MANIFEST = manifest;
 
-  map = L.map('map', { preferCanvas: true, zoomControl: true }).setView([54.5, -3.5], 6);
+  map = L.map('map', {
+    zoomControl: true,
+    // Two thousand polylines want the canvas renderer. Its hit area is the
+    // stroke width alone, though, and a quiet branch line is drawn one pixel
+    // wide — unclickable without a tolerance.
+    renderer: L.canvas({ tolerance: 6 }),
+  }).setView([54.5, -3.5], 6);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=__CARTO_KEY__', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     subdomains: 'abcd', maxZoom: 18,
   }).addTo(map);
   layer = L.layerGroup().addTo(map);
-  map.on('click', e => { if (!e.originalEvent.defaultPrevented && state.sel) { state.sel = null; highlight(); renderDetail(); } });
+  // Only a click on the background clears the selection; a click on a line
+  // stops bubbling before it gets here.
+  map.on('click', () => {
+    if (state.sel) { state.sel = null; highlight(); renderDetail(); }
+  });
 
   // Open on the most recent thing there is, whatever that turns out to be.
   const start = manifest.days.length ? ['day', manifest.days[manifest.days.length - 1]]
