@@ -230,3 +230,7 @@ terraform/.build/
 
 # Saved plans
 terraform/tfplan*
+
+# Track-map data is built by tracks/tracks.py and published to S3, not committed.
+site/data/tracks/
+.cache/

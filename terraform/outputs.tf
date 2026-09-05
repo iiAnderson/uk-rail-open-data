@@ -27,3 +27,8 @@ output "athena_workgroup" {
   description = "Workgroup with requester-pays enabled. Use it for your own queries too."
   value       = var.enable_aggregator ? aws_athena_workgroup.aggregate[0].name : null
 }
+
+output "tracks_function_name" {
+  description = "Invoke manually with: aws lambda invoke --function-name <this> --payload '{\"date\":\"2026-09-04\"}' out.json"
+  value       = var.enable_tracks && var.enable_aggregator ? aws_lambda_function.tracks[0].function_name : null
+}

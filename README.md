@@ -7,11 +7,17 @@ The data comes from the National Rail **Darwin** feed: schedules, live estimates
 and actual times for every service, collected continuously and normalised into
 one row per train.
 
+Two worked examples are published from it, rebuilt every morning: **passenger
+hours**, the time the network takes from the people travelling on it, and the
+**track-section map**, every service drawn onto the physical railway it runs
+over — 2,641 sections, by day, month or year.
+
 - **`athena/`** — table definitions. Run these in your own AWS account and start querying.
 - **`queries/`** — worked examples, including the full passenger-hours metric.
-- **`site/`** — the dashboard. Everything here is served publicly; nothing else is.
-- **`aggregate/`** — the daily job that builds the dashboard's data.
-- **`terraform/`** — deploy your own copy of the site, and the Lambda that rebuilds it daily.
+- **`site/`** — the two pages. Everything here is served publicly; nothing else is.
+- **`aggregate/`** — the daily job that builds the passenger-hours dashboard.
+- **`tracks/`** — the daily job that builds the [track-section map](tracks/README.md).
+- **`terraform/`** — deploy your own copy of the site, and the Lambdas that rebuild it daily.
 
 ## The dataset
 
@@ -83,7 +89,6 @@ these.
 | 2026-02-19 – 2026-03-17 | 27 days with services but **empty `stops` arrays**. Row counts look normal (~32k/day); every stop-level query returns nothing. |
 | 2025-02-25, 2025-03-27, 2026-02-10 | badly truncated — 20 to 60 services instead of ~30,000 |
 | 2025-12-25, 2025-12-26 | genuinely reduced service, but also incomplete |
-| after 2026-05-16 | normalisation has not run |
 
 Two cheap guards worth putting in your own queries:
 

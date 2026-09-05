@@ -1,0 +1,24 @@
+{
+  "_comment": [
+    "Corrections applied on top of uk_rail.tiplocs when mapping TIPLOC -> CRS.",
+    "'drop' removes mappings that are wrong: ILFENBP is a London Underground",
+    "timing point that the source file maps to Newbury Racecourse.",
+    "'phantom' adds infrastructure-only TIPLOCs that appear in the track",
+    "geometry but never in Darwin service data. Each points at the nearest real",
+    "station's CRS, all validated within 0.15 km, so that a service genuinely",
+    "running over the section can still match it."
+  ],
+  "drop": ["ILFENBP"],
+  "phantom": {
+    "WANBRO": "ASH",
+    "WDGRNPK": "BKG",
+    "RDNGBUS": "WKM",
+    "HROWDC": "HRW",
+    "WMBYDC": "WMB",
+    "BUSHYDC": "BSH",
+    "GLGQLL": "GLQ",
+    "MINFFR": "MFF",
+    "WATFJDC": "WFJ",
+    "WHMDSTD": "WHP"
+  }
+}

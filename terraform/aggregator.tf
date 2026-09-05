@@ -36,7 +36,8 @@ resource "aws_athena_workgroup" "aggregate" {
 
 # Query results are working files, not site content. They get their own private
 # bucket and are deleted on a timer — putting them in the bucket that serves the
-# public site would publish every query you ever run.
+# public site would publish every query you ever run. The track map keeps its
+# route cache here too, under state/, which the expiry rule below excludes.
 resource "aws_s3_bucket" "athena_results" {
   count         = local.aggregator_enabled
   bucket        = "${var.project_name}-athena-results"
@@ -72,7 +73,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "athena_results" {
     id     = "expire-results"
     status = "Enabled"
 
-    filter {}
+    # Scoped deliberately. state/ holds the track map's route cache, which is
+    # accumulated attribution work rather than a query artefact — expiring it
+    # would silently make that job both slower and less accurate.
+    filter {
+      prefix = "results/"
+    }
 
     expiration {
       days = var.athena_results_retention_days

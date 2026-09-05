@@ -71,6 +71,18 @@ variable "athena_database" {
   default     = "uk_rail"
 }
 
+variable "enable_tracks" {
+  description = "Deploy the Lambda that rebuilds the track-section map each day. Requires enable_aggregator, whose workgroup and results bucket it shares."
+  type        = bool
+  default     = true
+}
+
+variable "tracks_schedule" {
+  description = "When to rebuild the track-section map. Half an hour after the passenger-hours job, for the same reason: the upstream partition has to exist."
+  type        = string
+  default     = "cron(30 17 * * ? *)"
+}
+
 variable "aggregate_schedule" {
   description = "When to rebuild. Defaults to 17:00 UTC, well after the upstream normalisation job has written the day's partition."
   type        = string

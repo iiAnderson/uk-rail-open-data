@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track Sections — where Britain's railway runs late</title>
+<meta name="description" content="Delay and cancellation statistics for every passenger service on the British rail network, drawn onto the physical track it runs over.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#0d1013; --raised:#15191d; --hero:#f2f5f7; --ink:#e3e7ea; --ink2:#969a9f;
+  --muted:#666b70; --rule:#292d31; --rs:#1d2125;
+  --accent:#be8700; --bad:#e45d58; --good:#2faa78;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;font-size:14px;overflow:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:#d9a11a;text-decoration:underline}
+.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.hd{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted)}
+
+/* masthead */
+.bar{display:flex;align-items:center;gap:26px;padding:11px 20px;border-bottom:1px solid var(--rule);
+     background:var(--bg);flex-wrap:wrap;row-gap:10px}
+.brand{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--accent)}
+.nav{display:flex;gap:16px}
+.nav a{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.nav a:hover{color:var(--ink2);text-decoration:none}
+.nav a[aria-current]{color:var(--ink)}
+.spacer{flex:1}
+.pills{display:flex;gap:26px}
+.pill-v{font-family:var(--mono);font-size:17px;font-weight:500;letter-spacing:-.02em;margin-top:2px}
+
+/* segmented control + select */
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.seg button{background:none;border:0;border-right:1px solid var(--rule);color:var(--muted);
+            font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+            padding:5px 11px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button:hover{color:var(--ink2)}
+.seg button[aria-pressed="true"]{background:var(--rs);color:var(--accent)}
+select,input[type=range]{accent-color:var(--accent)}
+select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);border-radius:3px;
+       font-family:var(--mono);font-size:11px;padding:5px 8px;min-width:150px}
+
+/* layout */
+.stage{display:flex;height:calc(100vh - 53px);min-height:0}
+.side{width:308px;flex:0 0 308px;border-right:1px solid var(--rule);overflow-y:auto;
+      padding:16px 18px 28px;background:var(--bg)}
+#map{flex:1;min-width:0;background:#11151a}
+.leaflet-container{background:#11151a;font-family:var(--sans)}
+.leaflet-control-attribution{background:rgba(13,16,19,.82)!important;color:var(--muted)!important;
+                             font-family:var(--mono);font-size:9px}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.leaflet-bar a{background:var(--raised);color:var(--ink);border-bottom-color:var(--rule)}
+.leaflet-bar a:hover{background:var(--rs);color:var(--ink)}
+
+.group{margin-bottom:22px}
+.group>.hd{margin-bottom:9px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{background:none;border:1px solid var(--rule);border-radius:2px;color:var(--muted);
+      font-family:var(--mono);font-size:10px;padding:3px 6px;cursor:pointer}
+.chip:hover{color:var(--ink2)}
+.chip[aria-pressed="true"]{border-color:#3b3121;background:var(--rs);color:var(--accent)}
+.rangerow{display:flex;align-items:center;gap:10px}
+.rangerow input{flex:1;min-width:0}
+.rangerow .v{font-family:var(--mono);font-size:11px;color:var(--ink2);width:44px;text-align:right}
+
+/* legend */
+.ramp{height:7px;border-radius:3.5px;margin:5px 0 4px}
+.rampends{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+
+/* leaderboard */
+.lbrow{display:grid;grid-template-columns:16px 1fr 62px;gap:8px;align-items:center;
+       padding:4px 0;border-bottom:1px solid var(--rs);cursor:pointer;text-align:left;
+       background:none;border-left:0;border-right:0;border-top:0;width:100%;color:inherit}
+.lbrow:hover{background:var(--rs)}
+.lbrow .n{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.lbrow .name{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbrow .val{font-family:var(--mono);font-size:11px;text-align:right;color:var(--ink2)}
+
+/* detail */
+#detail{position:absolute;top:14px;right:14px;width:326px;max-height:calc(100% - 28px);
+        overflow-y:auto;background:rgba(21,25,29,.97);border:1px solid var(--rule);
+        border-radius:3px;padding:15px 16px;z-index:1000;display:none}
+#detail.on{display:block}
+.dclose{position:absolute;top:10px;right:11px;background:none;border:0;color:var(--muted);
+        cursor:pointer;font-size:15px;line-height:1;padding:2px}
+.dclose:hover{color:var(--ink)}
+.dtitle{font-size:15px;font-weight:600;line-height:1.3;padding-right:18px}
+.dvia{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5}
+.dstats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:13px 0}
+.dstats .v{font-family:var(--mono);font-size:15px;margin-top:2px}
+.dtable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10.5px;margin-top:6px}
+.dtable th{text-align:left;color:var(--muted);font-weight:500;padding:3px 6px 3px 0;
+           border-bottom:1px solid var(--rule)}
+.dtable td{padding:2px 6px 2px 0;border-bottom:1px solid var(--rs)}
+.dtable td.r,.dtable th.r{text-align:right}
+.dsec{margin-top:14px}
+
+.foot{margin-top:22px;font-family:var(--mono);font-size:9.5px;line-height:1.75;color:var(--muted)}
+.loading{color:var(--muted);font-family:var(--mono);font-size:12px;padding:40px 18px}
+.mapwrap{position:relative;flex:1;min-width:0;display:flex}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .bar{gap:14px}
+  .pills{gap:18px}
+  .stage{flex-direction:column;height:auto}
+  .side{width:auto;flex:none;border-right:0;border-bottom:1px solid var(--rule)}
+  .mapwrap{height:62vh;flex:none}
+  #detail{width:auto;left:14px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">UK RAIL OPEN DATA</span>
+  <nav class="nav">
+    <a href="index.html">Passenger hours</a>
+    <a href="tracks.html" aria-current="page">Track sections</a>
+  </nav>
+  <div class="seg" id="kind" role="group" aria-label="Period type"></div>
+  <label class="vh" for="periodkey">Period</label>
+  <select id="periodkey"></select>
+  <span class="spacer"></span>
+  <div class="pills" id="pills"></div>
+</header>
+
+<div class="stage">
+  <aside class="side" id="side"><div class="loading">Loading…</div></aside>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <aside id="detail" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ------------------------------------------------------------------ utils */
+const fmt = n => Math.round(n).toLocaleString('en-GB');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = t => Math.min(1, Math.max(0, t));
+
+function mix(hex1, hex2, t){
+  const p = h => [1,3,5].map(i => parseInt(h.slice(i, i+2), 16));
+  const [r1,g1,b1] = p(hex1), [r2,g2,b2] = p(hex2);
+  return '#' + [lerp(r1,r2,t), lerp(g1,g2,t), lerp(b1,b2,t)]
+    .map(c => Math.round(c).toString(16).padStart(2,'0')).join('');
+}
+
+const GREY = '#6b7280';
+function ramp(t){
+  if (t == null) return GREY;
+  t = clamp01(t);
+  return t <= .5 ? mix('#22c55e', '#eab308', t * 2) : mix('#eab308', '#ef4444', (t - .5) * 2);
+}
+/* Colourblind-safe: lightness alone, drawn over a dark outline. */
+const shade = t => t == null ? GREY : mix('#dfe3e7', '#7a2f2c', clamp01(t));
+
+/* Rates are comparable between periods, so their scales are fixed: five
+   minutes of average delay and ten per cent cancelled are the ends of both.
+   A total is not — a day's worth is a few hundredths of a year's — so that
+   scale is fitted to whatever period is loaded. */
+const SCALES = {
+  delay:  { label: 'Average delay',     ends: ['0', '5 min+'],  norm: v => v == null ? null : v / 5 },
+  cancel: { label: 'Cancellation rate', ends: ['0', '10%+'],    norm: v => v == null ? null : v * 10 },
+  total:  { label: 'Total delay',       ends: ['low', 'high'],  norm: null },
+};
+
+/* --------------------------------------------------------------- the page */
+const state = {
+  kind: 'day', key: null, minSvc: 1, colour: 'delay',
+  grey: false, tocs: null, lb: 'services', sel: null,
+};
+
+let GEO = null;          // static: polylines, station names, reason codes
+let MANIFEST = null;     // which periods exist
+let PERIOD = null;       // the loaded period's payload
+let VIEW = [];           // sections joined to geometry, filtered, re-aggregated
+let TOTAL_SCALE = null;  // fitted log scale for the total-delay colouring
+
+let map, layer;
+const lines = {};
+const cache = new Map();
+
+const station = tpl => (GEO.names[tpl] || tpl);
+const reason  = code => (GEO.reasons[code] || 'Reason ' + code);
+
+/* ------------------------------------------------------------ period data */
+async function loadPeriod(kind, key){
+  const id = kind + '/' + key;
+  if (!cache.has(id)) {
+    const res = await fetch('data/tracks/' + id + '.json');
+    if (!res.ok) throw new Error('no data for ' + id);
+    cache.set(id, await res.json());
+  }
+  PERIOD = cache.get(id);
+  state.kind = kind;
+  state.key = key;
+  state.sel = null;
+
+  // A period only carries the operators that actually ran in it.
+  const tocs = new Set();
+  for (const s of Object.values(PERIOD.sections)) for (const t in s.t) tocs.add(t);
+  PERIOD.tocs = [...tocs].sort();
+  if (state.tocs) {
+    state.tocs = state.tocs.filter(t => tocs.has(t));
+    if (!state.tocs.length) state.tocs = null;
+  }
+}
+
+/* Re-aggregate a section for the chosen operators. Everything published is a
+   sum, so narrowing to a few operators is addition rather than an estimate. */
+function measure(sec){
+  if (!state.tocs) return { s: sec.s, n: sec.n, td: sec.td, x: sec.x };
+  let s = 0, n = 0, td = 0, x = 0;
+  for (const toc of state.tocs) {
+    const t = sec.t[toc];
+    if (t) { s += t[0]; n += t[1]; td += t[2]; x += t[3]; }
+  }
+  return { s, n, td, x };
+}
+
+function rebuild(){
+  const rows = [];
+  for (const [k, sec] of Object.entries(PERIOD.sections)) {
+    const geo = GEO.byId[k];
+    if (!geo) continue;
+    const m = measure(sec);
+    if (m.s < state.minSvc) continue;
+    rows.push({
+      k, geo, raw: sec,
+      services: m.s,
+      ran: m.n,
+      delay: m.n ? m.td / m.n : null,
+      total: m.td,
+      cancel: m.s ? m.x / m.s : 0,
+      cancelled: m.x,
+    });
+  }
+  VIEW = rows;
+
+  // Fit the total-delay scale to this period, ignoring the long tail at both
+  // ends so one enormous section does not flatten everything else to green.
+  const totals = rows.map(r => r.total).filter(v => v > 0).sort((a, b) => a - b);
+  if (totals.length) {
+    const lo = Math.log10(totals[Math.floor(totals.length * 0.10)]);
+    const hi = Math.log10(totals[Math.floor(totals.length * 0.98)]);
+    TOTAL_SCALE = { lo, hi: Math.max(hi, lo + 1) };
+  } else {
+    TOTAL_SCALE = null;
+  }
+}
+
+function norm(row){
+  if (state.colour === 'total') {
+    if (!TOTAL_SCALE || row.total <= 0) return null;
+    return clamp01((Math.log10(row.total) - TOTAL_SCALE.lo) / (TOTAL_SCALE.hi - TOTAL_SCALE.lo));
+  }
+  const t = SCALES[state.colour].norm(state.colour === 'delay' ? row.delay : row.cancel);
+  return t == null ? null : clamp01(t);
+}
+
+const colourOf = row => state.grey ? shade(norm(row)) : ramp(norm(row));
+
+function weightOf(services, max){
+  if (services <= 0) return 1;
+  return Math.max(1, 1 + Math.sqrt(services) / Math.sqrt(Math.max(max, 1)) * 13);
+}
+
+/* -------------------------------------------------------------------- map */
+function drawMap(){
+  layer.clearLayers();
+  for (const k in lines) delete lines[k];
+  const max = VIEW.reduce((a, r) => Math.max(a, r.services), 0);
+
+  for (const row of VIEW) {
+    const weight = weightOf(row.services, max);
+    if (state.grey) {
+      // An outline does the work colour would, so the shading stays readable.
+      L.polyline(row.geo.c, { color: '#0d1013', weight: weight + 2.5, opacity: .9 }).addTo(layer);
+    }
+    const line = L.polyline(row.geo.c, {
+      color: colourOf(row), weight, opacity: state.grey ? 1 : .82, lineCap: 'round',
+    }).addTo(layer);
+    line.on('click', () => select(row.k, false));
+    lines[row.k] = line;
+  }
+  highlight();
+}
+
+function highlight(){
+  for (const [k, line] of Object.entries(lines)) {
+    line.setStyle({ opacity: !state.sel || state.sel === k ? (state.grey ? 1 : .82) : .17 });
+  }
+}
+
+function select(k, zoom){
+  state.sel = state.sel === k ? null : k;
+  if (state.sel && zoom && lines[state.sel]) map.fitBounds(lines[state.sel].getBounds(), { padding: [70, 70] });
+  highlight();
+  renderDetail();
+}
+
+/* ------------------------------------------------------------- rendering */
+function renderPills(){
+  let services = 0, ran = 0, total = 0, cancelled = 0;
+  for (const r of VIEW) { services += r.services; ran += r.ran; total += r.total; cancelled += r.cancelled; }
+  const pills = [
+    ['Sections', fmt(VIEW.length)],
+    ['Attributions', fmt(services)],
+    ['Avg delay', ran ? (total / ran).toFixed(1) + ' min' : '—'],
+    ['Cancelled', services ? (100 * cancelled / services).toFixed(2) + '%' : '—'],
+  ];
+  document.getElementById('pills').innerHTML = pills.map(([label, value]) =>
+    `<div><div class="hd">${esc(label)}</div><div class="pill-v">${esc(value)}</div></div>`).join('');
+}
+
+function renderSide(){
+  const scale = SCALES[state.colour];
+  const stops = [0, .25, .5, .75, 1].map(t =>
+    (state.grey ? shade(t) : ramp(t)) + ' ' + (t * 100) + '%').join(',');
+
+  const lb = [...VIEW].sort((a, b) => ({
+    services: (x, y) => y.services - x.services,
+    delay:    (x, y) => (y.delay ?? -1) - (x.delay ?? -1),
+    total:    (x, y) => y.total - x.total,
+    cancel:   (x, y) => y.cancel - x.cancel,
+  })[state.lb](a, b)).slice(0, 10);
+
+  const value = row => ({
+    services: fmt(row.services),
+    delay:    row.delay == null ? '—' : row.delay.toFixed(1) + 'm',
+    total:    fmt(row.total) + 'm',
+    cancel:   (row.cancel * 100).toFixed(1) + '%',
+  })[state.lb];
+
+  document.getElementById('side').innerHTML = `
+  <div class="group">
+    <div class="hd">Colour by</div>
+    <div class="seg" id="colour">
+      <button data-v="delay"  aria-pressed="${state.colour === 'delay'}">Avg delay</button>
+      <button data-v="total"  aria-pressed="${state.colour === 'total'}">Total</button>
+      <button data-v="cancel" aria-pressed="${state.colour === 'cancel'}">Cancelled</button>
+    </div>
+    <div class="ramp" style="background:linear-gradient(90deg,${stops})"></div>
+    <div class="rampends"><span>${esc(scale.ends[0])}</span><span>${esc(scale.ends[1])}</span></div>
+  </div>
+
+  <div class="group">
+    <div class="hd">Display</div>
+    <div class="seg" id="grey">
+      <button data-v="0" aria-pressed="${!state.grey}">Colour</button>
+      <button data-v="1" aria-pressed="${state.grey}">Greyscale</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="hd">Minimum services</div>
+    <div class="rangerow">
+      <input type="range" id="minsvc" min="1" max="200" value="${state.minSvc}" aria-label="Minimum services">
+      <span class="v m">${state.minSvc}</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="hd">Operator</div>
+    <div class="chips" id="tocs">
+      <button class="chip" data-toc="" aria-pressed="${!state.tocs}">All</button>
+      ${PERIOD.tocs.map(t =>
+        `<button class="chip" data-toc="${esc(t)}" aria-pressed="${!!state.tocs && state.tocs.includes(t)}">${esc(t)}</button>`).join('')}
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="hd">Busiest sections</div>
+    <div class="seg" id="lb" style="margin-bottom:8px">
+      <button data-v="services" aria-pressed="${state.lb === 'services'}">Services</button>
+      <button data-v="delay"    aria-pressed="${state.lb === 'delay'}">Delay</button>
+      <button data-v="total"    aria-pressed="${state.lb === 'total'}">Total</button>
+      <button data-v="cancel"   aria-pressed="${state.lb === 'cancel'}">Canc</button>
+    </div>
+    ${lb.map((row, i) => `
+      <button class="lbrow" data-k="${esc(row.k)}">
+        <span class="n">${i + 1}</span>
+        <span class="name">${esc(label(row))}</span>
+        <span class="val">${esc(value(row))}</span>
+      </button>`).join('') || '<div class="hd">Nothing matches these filters.</div>'}
+  </div>
+
+  <div class="foot">
+    Line thickness is the number of services attributed to a section; colour is
+    ${esc(scale.label.toLowerCase())}. A service is attributed to a section when it
+    stops at or is scheduled through the track it covers, which is a strong
+    inference rather than a signalling record. Reason codes are reported on a
+    minority of services. See
+    <a href="https://github.com/iiAnderson/uk-rail-open-data">the method and the data</a>.
+    Contains information from National Rail Enquiries.
+  </div>`;
+
+  document.querySelectorAll('#colour button').forEach(b =>
+    b.onclick = () => { state.colour = b.dataset.v; renderSide(); drawMap(); renderPills(); });
+  document.querySelectorAll('#grey button').forEach(b =>
+    b.onclick = () => { state.grey = b.dataset.v === '1'; renderSide(); drawMap(); });
+  document.querySelectorAll('#lb button').forEach(b =>
+    b.onclick = () => { state.lb = b.dataset.v; renderSide(); });
+  document.querySelectorAll('.lbrow').forEach(b =>
+    b.onclick = () => select(b.dataset.k, true));
+
+  const slider = document.getElementById('minsvc');
+  slider.oninput = () => { slider.nextElementSibling.textContent = slider.value; };
+  slider.onchange = () => { state.minSvc = +slider.value; refresh(); };
+
+  document.querySelectorAll('#tocs .chip').forEach(b => b.onclick = () => {
+    const toc = b.dataset.toc;
+    if (!toc) state.tocs = null;
+    else {
+      const on = state.tocs ? [...state.tocs] : [];
+      const at = on.indexOf(toc);
+      if (at >= 0) on.splice(at, 1); else on.push(toc);
+      state.tocs = on.length ? on : null;
+    }
+    refresh();
+  });
+}
+
+function label(row){
+  const tpls = row.geo.tpls;
+  if (!tpls.length) return row.k;
+  if (tpls.length === 1) return station(tpls[0]);
+  return station(tpls[0]) + ' – ' + station(tpls[tpls.length - 1]);
+}
+
+function renderDetail(){
+  const box = document.getElementById('detail');
+  const row = VIEW.find(r => r.k === state.sel);
+  if (!row) { box.className = ''; box.innerHTML = ''; return; }
+
+  const via = row.geo.tpls.slice(1, -1).map(station);
+  const tocs = Object.entries(row.raw.t)
+    .filter(([t]) => !state.tocs || state.tocs.includes(t))
+    .map(([t, v]) => ({ toc: t, s: v[0], d: v[1] ? v[2] / v[1] : null, td: v[2], x: v[3] }))
+    .sort((a, b) => b.s - a.s);
+
+  const counts = (obj, n) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, n);
+  const reasons = (obj, title) => {
+    const top = counts(obj, 4);
+    if (!top.length) return '';
+    return `<div class="dsec"><div class="hd">${title}</div>
+      <table class="dtable">${top.map(([code, n]) =>
+        `<tr><td>${esc(reason(code))}</td><td class="r">${fmt(n)}</td></tr>`).join('')}</table></div>`;
+  };
+
+  box.className = 'on';
+  box.innerHTML = `
+    <button class="dclose" aria-label="Close">&times;</button>
+    <div class="dtitle">${esc(label(row))}</div>
+    ${via.length ? `<div class="dvia">via ${esc(via.join(' · '))}</div>` : ''}
+    <div class="dstats">
+      <div><div class="hd">Services</div><div class="v">${fmt(row.services)}</div></div>
+      <div><div class="hd">Avg delay</div><div class="v">${row.delay == null ? '—' : row.delay.toFixed(1) + ' min'}</div></div>
+      <div><div class="hd">Total delay</div><div class="v">${fmt(row.total)} min</div></div>
+      <div><div class="hd">Cancelled</div><div class="v">${(row.cancel * 100).toFixed(2)}%</div></div>
+    </div>
+    <div class="dsec"><div class="hd">Operators</div>
+      <table class="dtable">
+        <tr><th>TOC</th><th class="r">Svc</th><th class="r">Delay</th><th class="r">Canc</th></tr>
+        ${tocs.map(t => `<tr><td>${esc(t.toc)}</td><td class="r">${fmt(t.s)}</td>
+          <td class="r">${t.d == null ? '—' : t.d.toFixed(1)}</td>
+          <td class="r">${fmt(t.x)}</td></tr>`).join('')}
+      </table></div>
+    ${reasons(row.raw.dr, 'Delay reasons')}
+    ${reasons(row.raw.xr, 'Cancellation reasons')}
+    ${(() => {
+      const top = counts(row.raw.h, 6);
+      if (!top.length) return '';
+      return `<div class="dsec"><div class="hd">Headcodes</div>
+        <table class="dtable">${top.map(([h, n]) =>
+          `<tr><td>${esc(h)}</td><td class="r">${fmt(n)}</td></tr>`).join('')}</table></div>`;
+    })()}`;
+  box.querySelector('.dclose').onclick = () => { state.sel = null; highlight(); renderDetail(); };
+}
+
+function renderPeriod(){
+  const kinds = [['day', 'Day'], ['month', 'Month'], ['year', 'Year']];
+  document.getElementById('kind').innerHTML = kinds
+    .filter(([k]) => MANIFEST[k + 's'].length)
+    .map(([k, l]) => `<button data-v="${k}" aria-pressed="${state.kind === k}">${l}</button>`).join('');
+  document.querySelectorAll('#kind button').forEach(b => b.onclick = async () => {
+    const keys = MANIFEST[b.dataset.v + 's'];
+    await show(b.dataset.v, keys[keys.length - 1]);
+  });
+
+  const picker = document.getElementById('periodkey');
+  picker.innerHTML = [...MANIFEST[state.kind + 's']].reverse()
+    .map(k => `<option value="${esc(k)}"${k === state.key ? ' selected' : ''}>${esc(pretty(k))}</option>`).join('');
+  picker.onchange = () => show(state.kind, picker.value);
+}
+
+function pretty(key){
+  if (key.length === 4) return key;
+  const opts = key.length === 7
+    ? { month: 'long', year: 'numeric' }
+    : { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' };
+  const iso = key.length === 7 ? key + '-01' : key;
+  return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { ...opts, timeZone: 'UTC' });
+}
+
+function refresh(){ rebuild(); drawMap(); renderPills(); renderSide(); renderDetail(); }
+
+async function show(kind, key){
+  await loadPeriod(kind, key);
+  renderPeriod();
+  refresh();
+}
+
+/* ------------------------------------------------------------------- boot */
+async function boot(){
+  const [geo, manifest] = await Promise.all([
+    fetch('tracks/geometry.json').then(r => r.json()),
+    fetch('data/tracks/index.json').then(r => r.json()),
+  ]);
+  GEO = geo;
+  GEO.byId = Object.fromEntries(geo.sections.map(s => [s.k, s]));
+  MANIFEST = manifest;
+
+  map = L.map('map', { preferCanvas: true, zoomControl: true }).setView([54.5, -3.5], 6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd', maxZoom: 18,
+  }).addTo(map);
+  layer = L.layerGroup().addTo(map);
+  map.on('click', e => { if (!e.originalEvent.defaultPrevented && state.sel) { state.sel = null; highlight(); renderDetail(); } });
+
+  // Open on the most recent thing there is, whatever that turns out to be.
+  const start = manifest.days.length ? ['day', manifest.days[manifest.days.length - 1]]
+              : manifest.months.length ? ['month', manifest.months[manifest.months.length - 1]]
+              : ['year', manifest.years[manifest.years.length - 1]];
+  await show(start[0], start[1]);
+}
+
+boot().catch(err => {
+  document.getElementById('side').innerHTML =
+    '<div class="loading">Could not load the data for this page.</div>';
+  console.error(err);
+});
+</script>
+</body>
+</html>

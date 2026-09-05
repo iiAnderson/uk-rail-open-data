@@ -36,7 +36,8 @@ a:hover{color:#d9a11a;text-decoration:underline}
 .masthead{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
 .brand{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--accent)}
 .chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--accent);
-      border:1px solid #3b3121;border-radius:2px;padding:3px 7px}
+      border:1px solid #3b3121;border-radius:2px;padding:3px 7px;white-space:nowrap}
+a.chip:hover{background:var(--rs);color:#d9a11a;text-decoration:none}
 
 /* hero */
 .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:48px;
@@ -251,6 +252,7 @@ function render(data, trend){
       <div class="hd" style="letter-spacing:.12em">The time Britain&rsquo;s railway takes from its passengers</div>
     </div>
     <div style="display:flex;align-items:center;gap:16px">
+      <a class="chip" href="tracks.html" style="text-decoration:none">TRACK&nbsp;SECTION&nbsp;MAP&nbsp;&rarr;</a>
       <span class="chip">GB RAIL NETWORK</span>
       <span class="m" style="font-size:11px;color:var(--ink2)">${esc(data.service_date)}</span>
     </div>

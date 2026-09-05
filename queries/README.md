@@ -8,6 +8,7 @@ Run these directly. Each is commented with what it scans.
 |---|---|
 | [`examples/cancellation_lead_time.sql`](examples/cancellation_lead_time.sql) | How much of the advertised timetable is deleted before the day — cancellations made a week ahead never reach a passenger's screen. |
 | [`examples/delay_by_segment.sql`](examples/delay_by_segment.sql) | Which stretches of track actually manufacture delay, and which quietly recover it because the timetable is padded. |
+| [`tracks_routes.sql`](tracks_routes.sql) | One row per service with the route it took, for the [track-section map](../tracks/README.md). One partition, under Athena's 10 MB minimum. |
 
 ## The passenger-hours metric
 

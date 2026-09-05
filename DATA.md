@@ -63,4 +63,16 @@ Worth knowing before you quote a number:
   treat the reason ranking as relative, not as a complete account.
 - **Loading data is partial.** `avg_loading` is only reported by some operators,
   so it is not comparable across the whole network.
+- **Track attribution is inferred, not recorded.** Darwin says where a service
+  stopped and what it was booked to pass through; it does not say which line it
+  took. The map matches a service to a section of track when its route touches
+  the stations on that section, and joins consecutive stops by walking the
+  network graph. Where two routes are plausible it will have picked one. Read a
+  section's figures as the traffic that almost certainly ran over it, not as a
+  signalling record.
+- **Cancellations are attributed to the part of the journey that was lost.** A
+  service curtailed at Reading counts as cancelled west of Reading and as a
+  running, possibly late, train east of it. Totals therefore differ from a
+  service-level cancellation rate, and deliberately so: a track section that
+  kept its trains did not lose them.
 - See [Known gaps](README.md#known-gaps) for dates where the pipeline failed.

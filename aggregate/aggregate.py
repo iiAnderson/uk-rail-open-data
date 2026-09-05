@@ -25,15 +25,18 @@ import argparse
 import json
 import os
 import sys
-import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterator
-from urllib.parse import urlparse
-
-import boto3
+from typing import Any
 
 HERE = Path(__file__).parent
+
+# Locally the shared module lives one level up; in the Lambda package it is
+# bundled alongside the code. Make both importable.
+if not (HERE / "common").is_dir():
+    sys.path.insert(0, str(HERE.parent))
+
+from common.aws import Athena, Output  # noqa: E402
 
 # Locally the queries live two levels up; in the Lambda package they are bundled
 # alongside the code.
@@ -66,97 +69,6 @@ def reason_text(code: str | None) -> str:
     if not code or code == "Not stated":
         return "Not stated"
     return REASON_CODES.get(str(code).strip(), f"Reason code {code}")
-
-
-class Output:
-    """Somewhere to put the built JSON — a local directory or an S3 prefix.
-
-    The two behave identically from the caller's point of view, which is what
-    lets the same code run from a laptop and from a Lambda.
-    """
-
-    def __init__(self, target: str) -> None:
-        self._s3_bucket: str | None = None
-        if target.startswith("s3://"):
-            parsed = urlparse(target)
-            self._s3_bucket = parsed.netloc
-            self._prefix = parsed.path.strip("/")
-            self._client = boto3.client("s3")
-        else:
-            self._dir = Path(target)
-            self._dir.mkdir(parents=True, exist_ok=True)
-
-    def __str__(self) -> str:
-        return f"s3://{self._s3_bucket}/{self._prefix}" if self._s3_bucket else str(self._dir)
-
-    def read(self, name: str) -> str | None:
-        """Existing contents, or None if it is not there yet."""
-        if self._s3_bucket:
-            try:
-                key = f"{self._prefix}/{name}" if self._prefix else name
-                return self._client.get_object(Bucket=self._s3_bucket, Key=key)["Body"].read().decode()
-            except self._client.exceptions.NoSuchKey:
-                return None
-        path = self._dir / name
-        return path.read_text() if path.exists() else None
-
-    def write(self, name: str, text: str) -> None:
-        if self._s3_bucket:
-            key = f"{self._prefix}/{name}" if self._prefix else name
-            self._client.put_object(
-                Bucket=self._s3_bucket, Key=key, Body=text.encode(),
-                ContentType="application/json", CacheControl="max-age=300",
-            )
-        else:
-            (self._dir / name).write_text(text)
-
-
-class Athena:
-    """Minimal synchronous Athena client."""
-
-    def __init__(self, database: str, workgroup: str, results: str, region: str) -> None:
-        self._client = boto3.client("athena", region_name=region)
-        self._database = database
-        self._workgroup = workgroup
-        self._results = results
-
-    def query(self, sql: str) -> list[dict[str, Any]]:
-        request: dict[str, Any] = {
-            "QueryString": sql,
-            "QueryExecutionContext": {"Database": self._database},
-            "WorkGroup": self._workgroup,
-        }
-        # A workgroup that enforces its own output location rejects an override.
-        if self._results:
-            request["ResultConfiguration"] = {"OutputLocation": self._results}
-
-        execution_id = self._client.start_query_execution(**request)["QueryExecutionId"]
-
-        while True:
-            execution = self._client.get_query_execution(QueryExecutionId=execution_id)
-            state = execution["QueryExecution"]["Status"]["State"]
-            if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
-                break
-            time.sleep(1)
-
-        if state != "SUCCEEDED":
-            reason = execution["QueryExecution"]["Status"].get("StateChangeReason", state)
-            raise RuntimeError(f"Athena query {state}: {reason}")
-
-        return list(self._rows(execution_id))
-
-    def _rows(self, execution_id: str) -> Iterator[dict[str, Any]]:
-        paginator = self._client.get_paginator("get_query_results")
-        header: list[str] | None = None
-
-        for page in paginator.paginate(QueryExecutionId=execution_id):
-            rows = page["ResultSet"]["Rows"]
-            if header is None:
-                header = [c.get("VarCharValue", "") for c in rows[0]["Data"]]
-                rows = rows[1:]
-            for row in rows:
-                values = [c.get("VarCharValue") for c in row["Data"]]
-                yield dict(zip(header, values))
 
 
 def load_sql(name: str, day: date) -> str:

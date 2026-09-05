@@ -41,10 +41,15 @@ domain afterwards; this module does not manage DNS.
 
 ## Cost
 
-CloudFront's free tier covers 1 TB out and 10 million requests a month. For a
-dashboard serving a 20 KB page and a 100 KB JSON file, expect the bill to be
-rounding error — S3 storage on a few megabytes, plus the CloudFront requests.
-`price_class` defaults to North America and Europe only.
+CloudFront's free tier covers 1 TB out and 10 million requests a month. The
+dashboard is a 20 KB page and a 100 KB JSON file; the map is heavier, about
+600 KB of track geometry cached for an hour plus one period file per view.
+Expect the bill to be rounding error either way — S3 storage on a few tens of
+megabytes, plus the CloudFront requests. `price_class` defaults to North America
+and Europe only.
+
+Athena is the other line, and it is smaller: both jobs together scan under
+20 MB a day, which is about **2p a year**.
 
 ## The daily aggregation job
 
@@ -109,3 +114,48 @@ The job **fails loudly** rather than writing an empty day. A dashboard that
 quietly stops updating is worse than one that visibly breaks — this project ran
 for 106 days with a dead upstream job before anyone noticed. If you want to hear
 about it, alarm on the Lambda's `Errors` metric.
+
+## The daily track-section map job
+
+`enable_tracks` (default true) deploys a second Lambda, `<project>-tracks`,
+which rebuilds `data/tracks/` every day at **17:30 UTC** — half an hour after
+the aggregation job, for the same reason. It requires `enable_aggregator`,
+whose Athena workgroup and results bucket it shares.
+
+| Resource | Notes |
+|---|---|
+| Lambda | Python 3.12, 1024 MB, 10 min timeout. Larger than the aggregation job because attribution runs in Python and the first day after a timetable change does far more of it. The package carries the track geometry, about 700 KB. |
+| IAM | Same as the aggregation job, plus delete on `data/tracks/*` — retention is part of the job — and read/write on `state/` in the results bucket. |
+| Schedule | `tracks_schedule`, default `cron(30 17 * * ? *)`. |
+
+### The route cache is not a query artefact
+
+The job keeps `state/route_sections.json.gz` in the Athena results bucket. It is
+accumulated attribution work, some of it bought with a scan ninety times the
+price of a normal run, and losing it makes the job both slower and less
+accurate. The expiry rule on that bucket is therefore scoped to `results/`.
+
+If you move the cache elsewhere, keep it somewhere durable.
+
+### Seed the map before the first scheduled run
+
+The map has nothing to show until some history exists, and the daily job only
+ever builds one day. Backfill it once, from a machine with credentials:
+
+```bash
+python tracks/tracks.py --backfill 2025-01-01 2026-09-04 \
+    --timing-points --raw-database darwin-connect \
+    --output s3://$(terraform output -raw bucket_name)/data/tracks \
+    --state s3://$(terraform output -raw bucket_name)-athena-results/state \
+    --workgroup $(terraform output -raw athena_workgroup)
+```
+
+That is about 280 GB scanned, or $1.40, and takes a few hours. `--timing-points`
+is what makes it worth doing properly — see [tracks/README.md](../tracks/README.md).
+
+### Running it by hand
+
+```bash
+aws lambda invoke --function-name $(terraform output -raw tracks_function_name) \
+  --payload '{"date":"2026-09-04"}' --cli-binary-format raw-in-base64-out out.json
+```
