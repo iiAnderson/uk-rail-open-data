@@ -34,6 +34,7 @@ REFERENCE = HERE / "reference"
 TRACK_SECTIONS = REFERENCE / "track_sections.json"
 CRS_OVERRIDES = REFERENCE / "crs_overrides.json"
 REASON_CODES = ROOT / "aggregate" / "reason_codes.json"
+TOC_NAMES = ROOT / "aggregate" / "toc_names.json"
 
 # Every station name in the source data ends this way. The map has no room for it.
 NAME_SUFFIXES = (" Rail Station", " Station")
@@ -69,7 +70,12 @@ def build(athena: Athena) -> tuple[dict, dict[str, str]]:
     crs.update(overrides["phantom"])
 
     sections = [
-        {"k": s["id"], "c": s["coords"], "tpls": s["tiplocs"]}
+        {
+            "k": s["id"],
+            "c": s["coords"],
+            "tpls": s["tiplocs"],
+            "km": round(s["length_km"], 1),
+        }
         for s in track["sections"]
     ]
 
@@ -81,6 +87,7 @@ def build(athena: Athena) -> tuple[dict, dict[str, str]]:
         "sections": sections,
         "names": {t: names[t] for t in sorted(referenced) if t in names},
         "reasons": json.loads(REASON_CODES.read_text()),
+        "tocs": json.loads(TOC_NAMES.read_text()),
     }
     return geometry, crs
 

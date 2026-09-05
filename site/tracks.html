@@ -77,6 +77,11 @@ select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);bo
 /* legend */
 .ramp{height:7px;border-radius:3.5px;margin:5px 0 4px}
 .rampends{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.thick{display:flex;align-items:center;gap:9px;margin-top:7px}
+.thick i{background:var(--ink2);border-radius:2px;display:block;flex:0 0 32px}
+.thick span{font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.chip-v{display:inline-block;padding:1px 7px;border-radius:2px;color:#0d1013;
+        font-family:var(--mono);font-weight:600;font-size:13px}
 
 /* leaderboard */
 .lbrow{display:grid;grid-template-columns:16px 1fr 62px;gap:8px;align-items:center;
@@ -196,6 +201,7 @@ const cache = new Map();
 
 const station = tpl => (GEO.names[tpl] || tpl);
 const reason  = code => (GEO.reasons[code] || 'Reason ' + code);
+const operator = toc => (GEO.tocs[toc] || toc);
 
 /* ------------------------------------------------------------ period data */
 async function loadPeriod(kind, key){
@@ -356,6 +362,8 @@ function renderSide(){
     </div>
     <div class="ramp" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="rampends"><span>${esc(scale.ends[0])}</span><span>${esc(scale.ends[1])}</span></div>
+    <div class="thick"><i style="height:2px"></i><span>few services</span></div>
+    <div class="thick"><i style="height:8px"></i><span>many services</span></div>
   </div>
 
   <div class="group">
@@ -462,33 +470,45 @@ function renderDetail(){
         `<tr><td>${esc(reason(code))}</td><td class="r">${fmt(n)}</td></tr>`).join('')}</table></div>`;
   };
 
+  const tpls = row.geo.tpls;
+  const ends = tpls.length > 1
+    ? esc(station(tpls[0])) + ' &harr; ' + esc(station(tpls[tpls.length - 1]))
+    : esc(label(row));
+  // The delay reads against the same ramp the map is drawn with, so the number
+  // and the line the reader just clicked are obviously the same measurement.
+  const chip = row.delay == null ? null
+    : (state.grey ? shade(clamp01(row.delay / 5)) : ramp(clamp01(row.delay / 5)));
+  const headcodes = counts(row.raw.h, 6);
+  const allHeadcodes = Object.keys(row.raw.h || {}).length;
+
   box.className = 'on';
   box.innerHTML = `
     <button class="dclose" aria-label="Close">&times;</button>
-    <div class="dtitle">${esc(label(row))}</div>
-    ${via.length ? `<div class="dvia">via ${esc(via.join(' · '))}</div>` : ''}
+    <div class="dtitle">${ends}</div>
+    <div class="dvia">${row.geo.km ? esc(row.geo.km.toFixed(1)) + ' km' : ''}${
+      via.length ? (row.geo.km ? ' &middot; ' : '') + 'via ' + esc(via.join(' &middot; ')) : ''}</div>
     <div class="dstats">
       <div><div class="hd">Services</div><div class="v">${fmt(row.services)}</div></div>
-      <div><div class="hd">Avg delay</div><div class="v">${row.delay == null ? '—' : row.delay.toFixed(1) + ' min'}</div></div>
+      <div><div class="hd">Avg delay</div><div class="v">${
+        chip ? `<span class="chip-v" style="background:${chip}">${row.delay.toFixed(1)}</span> min`
+             : '—'}</div></div>
       <div><div class="hd">Total delay</div><div class="v">${fmt(row.total)} min</div></div>
       <div><div class="hd">Cancelled</div><div class="v">${(row.cancel * 100).toFixed(2)}%</div></div>
     </div>
     <div class="dsec"><div class="hd">Operators</div>
       <table class="dtable">
         <tr><th>TOC</th><th class="r">Svc</th><th class="r">Delay</th><th class="r">Canc</th></tr>
-        ${tocs.map(t => `<tr><td>${esc(t.toc)}</td><td class="r">${fmt(t.s)}</td>
+        ${tocs.map(t => `<tr><td title="${esc(operator(t.toc))}">${esc(t.toc)}</td>
+          <td class="r">${fmt(t.s)}</td>
           <td class="r">${t.d == null ? '—' : t.d.toFixed(1)}</td>
           <td class="r">${fmt(t.x)}</td></tr>`).join('')}
       </table></div>
     ${reasons(row.raw.dr, 'Delay reasons')}
     ${reasons(row.raw.xr, 'Cancellation reasons')}
-    ${(() => {
-      const top = counts(row.raw.h, 6);
-      if (!top.length) return '';
-      return `<div class="dsec"><div class="hd">Headcodes</div>
-        <table class="dtable">${top.map(([h, n]) =>
-          `<tr><td>${esc(h)}</td><td class="r">${fmt(n)}</td></tr>`).join('')}</table></div>`;
-    })()}`;
+    ${headcodes.length ? `<div class="dsec">
+      <div class="hd">Headcodes (${allHeadcodes})</div>
+      <table class="dtable">${headcodes.map(([h, n]) =>
+        `<tr><td>${esc(h)}</td><td class="r">${fmt(n)}</td></tr>`).join('')}</table></div>` : ''}`;
   box.querySelector('.dclose').onclick = () => { state.sel = null; highlight(); renderDetail(); };
 }
 
