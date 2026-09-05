@@ -18,6 +18,7 @@ over — 2,641 sections, by day, month or year.
 - **`aggregate/`** — the daily job that builds the passenger-hours dashboard.
 - **`tracks/`** — the daily job that builds the [track-section map](tracks/README.md).
 - **`terraform/`** — deploy your own copy of the site, and the Lambdas that rebuild it daily.
+- **`deploy.sh`** — publishes `site/`, substituting the basemap key that is deliberately not committed.
 
 ## The dataset
 
