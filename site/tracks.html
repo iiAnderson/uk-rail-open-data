@@ -192,6 +192,9 @@ function mix(hex1, hex2, t){
     .map(c => Math.round(c).toString(16).padStart(2,'0')).join('');
 }
 
+// Below this a section's average delay is not worth ranking. See renderSide.
+const RANK_MIN_SERVICES = 5;
+
 const GREY = '#6b7280';
 function ramp(t){
   if (t == null) return GREY;
@@ -391,12 +394,21 @@ function renderSide(){
   const stops = [0, .25, .5, .75, 1].map(t =>
     (state.grey ? shade(t) : ramp(t)) + ' ' + (t * 100) + '%').join(',');
 
-  const lb = [...VIEW].sort((a, b) => ({
+  // Ranking by average delay puts a mean at the top, and a mean over two or
+  // three services is an anecdote rather than a measurement — over a year, a
+  // pair of freak trains on a section nothing else uses will outrank a corridor
+  // carrying thirty thousand. Counts and sums do not have that problem, so the
+  // floor applies only where an average is being ranked.
+  const ranked = state.lb === 'delay'
+    ? VIEW.filter(r => r.services > RANK_MIN_SERVICES)
+    : VIEW;
+  const lb = [...ranked].sort((a, b) => ({
     services: (x, y) => y.services - x.services,
     delay:    (x, y) => (y.delay ?? -1) - (x.delay ?? -1),
     total:    (x, y) => y.total - x.total,
     cancel:   (x, y) => y.cancel - x.cancel,
   })[state.lb](a, b)).slice(0, 10);
+  const excluded = state.lb === 'delay' ? VIEW.length - ranked.length : 0;
 
   // Ordered by share of the period rather than alphabetically, so the operators
   // that actually account for what is on screen are the ones at the top.
@@ -466,6 +478,9 @@ function renderSide(){
         <span class="name">${esc(label(row))}</span>
         <span class="val">${esc(value(row))}</span>
       </button>`).join('') || '<div class="hd">Nothing matches these filters.</div>'}
+    ${excluded ? `<div class="hd" style="margin-top:7px;text-transform:none;letter-spacing:.04em">
+      ${fmt(excluded)} section${excluded === 1 ? '' : 's'} with ${RANK_MIN_SERVICES} or fewer services excluded
+    </div>` : ''}
   </div>
 
   <div class="foot">
