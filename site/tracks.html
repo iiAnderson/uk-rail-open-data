@@ -10,19 +10,32 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
+/* Dark is the default, because the rest of the site is dark. The toggle
+   overrides it and the choice is remembered. */
 :root{
   --bg:#0d1013; --raised:#15191d; --hero:#f2f5f7; --ink:#e3e7ea; --ink2:#969a9f;
   --muted:#666b70; --rule:#292d31; --rs:#1d2125;
-  --accent:#be8700; --bad:#e45d58; --good:#2faa78;
+  --accent:#be8700; --accent-line:#3b3121; --hover:#d9a11a;
+  --bad:#e45d58; --good:#2faa78;
+  --mapbg:#11151a; --overlay:rgba(13,16,19,.82); --panel:rgba(21,25,29,.97);
+  --outline:#0d1013; --tiles:dark_all;
   --sans:"IBM Plex Sans",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+:root[data-theme="light"]{
+  --bg:#fbfbfa; --raised:#ffffff; --hero:#12161a; --ink:#1c2024; --ink2:#565d64;
+  --muted:#6b737a; --rule:#e0e3e6; --rs:#eef0f2;   /* 4.65:1 — the small caps labels clear AA */
+  --accent:#8a6200; --accent-line:#d8c9a4; --hover:#6d4d00;
+  --bad:#b3302b; --good:#1f7a55;
+  --mapbg:#e9ebed; --overlay:rgba(255,255,255,.88); --panel:rgba(255,255,255,.97);
+  --outline:#ffffff;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
      -webkit-font-smoothing:antialiased;font-size:14px;overflow:hidden}
 a{color:var(--accent);text-decoration:none}
-a:hover{color:#d9a11a;text-decoration:underline}
+a:hover{color:var(--hover);text-decoration:underline}
 .m{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .hd{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.16em;
     text-transform:uppercase;color:var(--muted)}
@@ -55,9 +68,9 @@ select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);bo
 .stage{display:flex;height:calc(100vh - 53px);min-height:0}
 .side{width:308px;flex:0 0 308px;border-right:1px solid var(--rule);overflow-y:auto;
       padding:16px 18px 28px;background:var(--bg)}
-#map{flex:1;min-width:0;background:#11151a}
-.leaflet-container{background:#11151a;font-family:var(--sans)}
-.leaflet-control-attribution{background:rgba(13,16,19,.82)!important;color:var(--muted)!important;
+#map{flex:1;min-width:0;background:var(--mapbg)}
+.leaflet-container{background:var(--mapbg);font-family:var(--sans)}
+.leaflet-control-attribution{background:var(--overlay)!important;color:var(--muted)!important;
                              font-family:var(--mono);font-size:9px}
 .leaflet-control-attribution a{color:var(--muted)!important}
 .leaflet-bar a{background:var(--raised);color:var(--ink);border-bottom-color:var(--rule)}
@@ -69,10 +82,24 @@ select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);bo
 .chip{background:none;border:1px solid var(--rule);border-radius:2px;color:var(--muted);
       font-family:var(--mono);font-size:10px;padding:3px 6px;cursor:pointer}
 .chip:hover{color:var(--ink2)}
-.chip[aria-pressed="true"]{border-color:#3b3121;background:var(--rs);color:var(--accent)}
-.rangerow{display:flex;align-items:center;gap:10px}
-.rangerow input{flex:1;min-width:0}
-.rangerow .v{font-family:var(--mono);font-size:11px;color:var(--ink2);width:44px;text-align:right}
+.chip[aria-pressed="true"]{border-color:var(--accent-line);background:var(--rs);color:var(--accent)}
+/* Operators are a list rather than a row of codes: two letters is not a name,
+   and there are twenty-nine of them. */
+.oprow{display:grid;grid-template-columns:34px 1fr 46px;gap:8px;align-items:center;
+       width:100%;padding:4px 0;border:0;border-bottom:1px solid var(--rs);
+       background:none;color:inherit;cursor:pointer;text-align:left}
+.oprow:hover{background:var(--rs)}
+.oprow .code{font-family:var(--mono);font-size:10px;color:var(--muted);
+             border:1px solid var(--rule);border-radius:2px;padding:2px 0;text-align:center}
+.oprow .nm{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+.oprow .sh{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right}
+.oprow[aria-pressed="true"] .code{border-color:var(--accent-line);background:var(--rs);color:var(--accent)}
+.oprow[aria-pressed="true"] .nm{color:var(--ink)}
+.oplist{max-height:250px;overflow-y:auto}
+.themebtn{background:none;border:1px solid var(--rule);border-radius:3px;color:var(--muted);
+          font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+          padding:5px 10px;cursor:pointer}
+.themebtn:hover{color:var(--ink);border-color:var(--ink2)}
 
 /* legend */
 .ramp{height:7px;border-radius:3.5px;margin:5px 0 4px}
@@ -80,7 +107,7 @@ select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);bo
 .thick{display:flex;align-items:center;gap:9px;margin-top:7px}
 .thick i{background:var(--ink2);border-radius:2px;display:block;flex:0 0 32px}
 .thick span{font-family:var(--mono);font-size:9.5px;color:var(--muted)}
-.chip-v{display:inline-block;padding:1px 7px;border-radius:2px;color:#0d1013;
+.chip-v{display:inline-block;padding:1px 7px;border-radius:2px;color:#10141a;
         font-family:var(--mono);font-weight:600;font-size:13px}
 
 /* leaderboard */
@@ -94,7 +121,7 @@ select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);bo
 
 /* detail */
 #detail{position:absolute;top:14px;right:14px;width:326px;max-height:calc(100% - 28px);
-        overflow-y:auto;background:rgba(21,25,29,.97);border:1px solid var(--rule);
+        overflow-y:auto;background:var(--panel);border:1px solid var(--rule);
         border-radius:3px;padding:15px 16px;z-index:1000;display:none}
 #detail.on{display:block}
 .dclose{position:absolute;top:10px;right:11px;background:none;border:0;color:var(--muted);
@@ -139,6 +166,7 @@ select{background:var(--raised);color:var(--ink);border:1px solid var(--rule);bo
   <select id="periodkey"></select>
   <span class="spacer"></span>
   <div class="pills" id="pills"></div>
+  <button class="themebtn" id="theme" aria-label="Switch between dark and light"></button>
 </header>
 
 <div class="stage">
@@ -185,9 +213,25 @@ const SCALES = {
 
 /* --------------------------------------------------------------- the page */
 const state = {
-  kind: 'day', key: null, minSvc: 1, colour: 'delay',
+  kind: 'day', key: null, colour: 'delay',
   grey: false, tocs: null, lb: 'services', sel: null,
 };
+
+/* ------------------------------------------------------------------ theme */
+const TILES = t => `https://{s}.basemaps.cartocdn.com/${t}/{z}/{x}/{y}{r}.png?key=__CARTO_KEY__`;
+
+function theme(){ return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'; }
+
+function setTheme(next){
+  document.documentElement.dataset.theme = next;
+  // localStorage is unavailable in a private window and throws rather than
+  // returning null, which would take the whole page down with it.
+  try { localStorage.setItem('tracks-theme', next); } catch (e) { /* not important */ }
+  const button = document.getElementById('theme');
+  if (button) button.textContent = next === 'light' ? 'Dark' : 'Light';
+  if (tiles) tiles.setUrl(TILES(next === 'light' ? 'light_all' : 'dark_all'));
+  if (layer) drawMap();   // the greyscale outline is drawn in the page colour
+}
 
 let GEO = null;          // static: polylines, station names, reason codes
 let MANIFEST = null;     // which periods exist
@@ -195,7 +239,7 @@ let PERIOD = null;       // the loaded period's payload
 let VIEW = [];           // sections joined to geometry, filtered, re-aggregated
 let TOTAL_SCALE = null;  // fitted log scale for the total-delay colouring
 
-let map, layer;
+let map, layer, tiles;
 const lines = {};
 const cache = new Map();
 
@@ -246,7 +290,7 @@ function rebuild(){
     const geo = GEO.byId[k];
     if (!geo) continue;
     const m = measure(sec);
-    if (m.s < state.minSvc) continue;
+    if (!m.s) continue;
     rows.push({
       k, geo, raw: sec,
       services: m.s,
@@ -299,7 +343,8 @@ function drawMap(){
       // An outline does the work colour would, so the shading stays readable.
       // It must not take clicks: it sits under the line it is outlining.
       L.polyline(row.geo.c, {
-        color: '#0d1013', weight: weight + 2.5, opacity: .9, interactive: false,
+        color: theme() === 'light' ? '#ffffff' : '#0d1013',
+        weight: weight + 2.5, opacity: .9, interactive: false,
       }).addTo(layer);
     }
     const line = L.polyline(row.geo.c, {
@@ -353,6 +398,16 @@ function renderSide(){
     cancel:   (x, y) => y.cancel - x.cancel,
   })[state.lb](a, b)).slice(0, 10);
 
+  // Ordered by share of the period rather than alphabetically, so the operators
+  // that actually account for what is on screen are the ones at the top.
+  const byToc = {};
+  for (const sec of Object.values(PERIOD.sections))
+    for (const [t, v] of Object.entries(sec.t)) byToc[t] = (byToc[t] || 0) + v[0];
+  const totalAttr = Object.values(byToc).reduce((a, b) => a + b, 0) || 1;
+  const operators = Object.entries(byToc)
+    .sort((a, b) => b[1] - a[1])
+    .map(([toc, n]) => ({ toc, name: operator(toc), share: (100 * n / totalAttr).toFixed(1) }));
+
   const value = row => ({
     services: fmt(row.services),
     delay:    row.delay == null ? '—' : row.delay.toFixed(1) + 'm',
@@ -383,19 +438,17 @@ function renderSide(){
   </div>
 
   <div class="group">
-    <div class="hd">Minimum services</div>
-    <div class="rangerow">
-      <input type="range" id="minsvc" min="1" max="200" value="${state.minSvc}" aria-label="Minimum services">
-      <span class="v m">${state.minSvc}</span>
-    </div>
-  </div>
-
-  <div class="group">
-    <div class="hd">Operator</div>
-    <div class="chips" id="tocs">
-      <button class="chip" data-toc="" aria-pressed="${!state.tocs}">All</button>
-      ${PERIOD.tocs.map(t =>
-        `<button class="chip" data-toc="${esc(t)}" aria-pressed="${!!state.tocs && state.tocs.includes(t)}">${esc(t)}</button>`).join('')}
+    <div class="hd">Operators${state.tocs ? ' &middot; ' + state.tocs.length + ' selected' : ''}</div>
+    <div class="oplist" id="tocs">
+      <button class="oprow" data-toc="" aria-pressed="${!state.tocs}">
+        <span class="code">ALL</span><span class="nm">Every operator</span><span class="sh"></span>
+      </button>
+      ${operators.map(o => `
+        <button class="oprow" data-toc="${esc(o.toc)}" aria-pressed="${!!state.tocs && state.tocs.includes(o.toc)}">
+          <span class="code">${esc(o.toc)}</span>
+          <span class="nm" title="${esc(o.name)}">${esc(o.name)}</span>
+          <span class="sh">${o.share}%</span>
+        </button>`).join('')}
     </div>
   </div>
 
@@ -417,7 +470,8 @@ function renderSide(){
 
   <div class="foot">
     Line thickness is the number of services attributed to a section; colour is
-    ${esc(scale.label.toLowerCase())}. A service is attributed to a section when it
+    ${esc(scale.label.toLowerCase())}. Percentages beside each operator are its
+    share of the attributions in this period. A service is attributed to a section when it
     stops at or is scheduled through the track it covers, which is a strong
     inference rather than a signalling record. Reason codes are reported on a
     minority of services. See
@@ -434,11 +488,7 @@ function renderSide(){
   document.querySelectorAll('.lbrow').forEach(b =>
     b.onclick = () => select(b.dataset.k, true));
 
-  const slider = document.getElementById('minsvc');
-  slider.oninput = () => { slider.nextElementSibling.textContent = slider.value; };
-  slider.onchange = () => { state.minSvc = +slider.value; refresh(); };
-
-  document.querySelectorAll('#tocs .chip').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tocs .oprow').forEach(b => b.onclick = () => {
     const toc = b.dataset.toc;
     if (!toc) state.tocs = null;
     else {
@@ -563,6 +613,13 @@ async function boot(){
   GEO.byId = Object.fromEntries(geo.sections.map(s => [s.k, s]));
   MANIFEST = manifest;
 
+  let saved = null;
+  try { saved = localStorage.getItem('tracks-theme'); } catch (e) { /* private window */ }
+  document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark';
+  const button = document.getElementById('theme');
+  button.textContent = theme() === 'light' ? 'Dark' : 'Light';
+  button.onclick = () => setTheme(theme() === 'light' ? 'dark' : 'light');
+
   map = L.map('map', {
     zoomControl: true,
     // Two thousand polylines want the canvas renderer. Its hit area is the
@@ -570,7 +627,7 @@ async function boot(){
     // wide — unclickable without a tolerance.
     renderer: L.canvas({ tolerance: 6 }),
   }).setView([54.5, -3.5], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=__CARTO_KEY__', {
+  tiles = L.tileLayer(TILES(theme() === 'light' ? 'light_all' : 'dark_all'), {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     subdomains: 'abcd', maxZoom: 18,
   }).addTo(map);
