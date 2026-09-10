@@ -1,7 +1,10 @@
 locals {
   bucket_name = var.project_name
   use_domain  = var.domain_name != ""
-  tags        = merge({ Project = var.project_name }, var.tags)
+
+  # Framing is off unless someone is named. See the headers policy below.
+  allow_framing = length(var.frame_ancestors) > 0
+  tags          = merge({ Project = var.project_name }, var.tags)
 }
 
 # ---------------------------------------------------------------------------
@@ -70,9 +73,26 @@ resource "aws_cloudfront_response_headers_policy" "site" {
   security_headers_config {
     content_type_options { override = true }
 
-    frame_options {
-      frame_option = "DENY"
-      override     = true
+    # X-Frame-Options has no way to name a cross-origin embedder, so when
+    # framing is allowed it is dropped in favour of CSP frame-ancestors, which
+    # can. Only that one directive is set, so nothing else on the page is
+    # constrained by the policy.
+    dynamic "frame_options" {
+      for_each = local.allow_framing ? [] : [1]
+
+      content {
+        frame_option = "DENY"
+        override     = true
+      }
+    }
+
+    dynamic "content_security_policy" {
+      for_each = local.allow_framing ? [1] : []
+
+      content {
+        content_security_policy = "frame-ancestors ${join(" ", var.frame_ancestors)}"
+        override                = true
+      }
     }
 
     referrer_policy {
@@ -88,10 +108,22 @@ resource "aws_cloudfront_response_headers_policy" "site" {
   }
 }
 
+# Extension-less URLs are rewritten to the .html behind them. See the comment
+# in pretty-urls.js for why this is a rewrite and deliberately not a redirect.
+resource "aws_cloudfront_function" "pretty_urls" {
+  name    = "${var.project_name}-pretty-urls"
+  runtime = "cloudfront-js-2.0"
+  comment = "Serve /tracks from /tracks.html without redirecting"
+  publish = true
+  code    = file("${path.module}/pretty-urls.js")
+}
+
 resource "aws_cloudfront_distribution" "site" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  default_root_object = "index.html"
+  enabled         = true
+  is_ipv6_enabled = true
+  # The function rewrites "/" before this is consulted, so it is belt and
+  # braces — but a stale index.html here would be misleading.
+  default_root_object = "passenger-hours.html"
   price_class         = var.price_class
   aliases             = local.use_domain ? [var.domain_name] : []
   comment             = "${var.project_name} static site"
@@ -121,6 +153,13 @@ resource "aws_cloudfront_distribution" "site" {
     default_ttl                = var.default_cache_seconds
     max_ttl                    = var.default_cache_seconds
     response_headers_policy_id = aws_cloudfront_response_headers_policy.site.id
+
+    # Only the default behaviour needs this. Everything under /data/ carries an
+    # extension already, so the function would be a no-op there.
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.pretty_urls.arn
+    }
   }
 
   # The aggregation job rewrites these once a day. A short TTL is cheaper than

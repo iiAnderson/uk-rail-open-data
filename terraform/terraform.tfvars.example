@@ -7,6 +7,9 @@ region       = "eu-west-1"
 # domain_name         = "rail.example.com"
 # acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
 
+# Origins allowed to iframe the site. Leave unset to block framing entirely.
+# frame_ancestors = ["'self'", "https://blog.example.com"]
+
 tags = {
   Owner = "me"
 }

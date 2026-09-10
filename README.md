@@ -14,7 +14,11 @@ over — 2,641 sections, by day, month or year.
 
 - **`athena/`** — table definitions. Run these in your own AWS account and start querying.
 - **`queries/`** — worked examples, including the full passenger-hours metric.
-- **`site/`** — the two pages. Everything here is served publicly; nothing else is.
+- **`site/`** — the two pages and the navigation rail they share. Everything here
+  is served publicly; nothing else is. The pages are reachable at both
+  `/tracks` and `/tracks.html`: a CloudFront Function rewrites extension-less
+  paths, so the pretty URL and the one the blog embeds in an iframe resolve to
+  the same object without a redirect.
 - **`aggregate/`** — the daily job that builds the passenger-hours dashboard.
 - **`tracks/`** — the daily job that builds the [track-section map](tracks/README.md).
 - **`terraform/`** — deploy your own copy of the site, and the Lambdas that rebuild it daily.

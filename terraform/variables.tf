@@ -22,6 +22,12 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
+variable "frame_ancestors" {
+  description = "Origins allowed to embed the site in an iframe, e.g. [\"'self'\", \"https://blog.example.com\"]. Empty leaves the site un-embeddable anywhere."
+  type        = list(string)
+  default     = []
+}
+
 variable "price_class" {
   description = "CloudFront price class. PriceClass_100 is North America and Europe only, and is the cheapest."
   type        = string
