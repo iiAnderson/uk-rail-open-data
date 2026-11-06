@@ -34,7 +34,10 @@
       '<path d="M13.8 3.6v5.1h5.1"/><path d="M8.3 13h7.4M8.3 16.4h5.2"/>',
     data:
       '<ellipse cx="12" cy="6" rx="7" ry="2.8"/>' +
-      '<path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6"/><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/>'
+      '<path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6"/><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/>',
+    routes:
+      '<circle cx="12" cy="12" r="2.6"/><path d="M12 9.4V5M14.3 13.3l3.9 2.4M9.7 13.3l-3.9 2.4"/>' +
+      '<circle cx="12" cy="3.6" r="1.4"/><circle cx="19.4" cy="16.4" r="1.4"/><circle cx="4.6" cy="16.4" r="1.4"/>'
   };
 
   /* Adding a visualisation is one line here and nothing else. */
@@ -42,6 +45,7 @@
     { group: 'Visualisations' },
     { id: 'passenger-hours', name: 'Passenger hours', href: '/passenger-hours', icon: 'hours' },
     { id: 'tracks',          name: 'Track sections',  href: '/tracks',          icon: 'tracks' },
+    { id: 'routes',          name: 'Station routes',  href: '/routes',          icon: 'routes' },
     { group: 'Elsewhere' },
     { id: 'home', name: 'Home',        href: 'https://robbiea.co.uk',      icon: 'home', ext: true },
     { id: 'blog', name: 'Blog',        href: 'https://blog.robbiea.co.uk', icon: 'blog', ext: true },

@@ -17,6 +17,11 @@
 # daily; the copies under site/data/ are samples so the pages render locally.
 # Syncing them up would revert the live figures to whatever was last committed,
 # and --delete would remove any day the samples do not contain.
+#
+# routes.html and routes/ are NOT deployed either. They belong to the
+# rail-network-visualiser repository, which publishes the station route maps
+# there with its own tools/site.sh. Without these excludes, --delete here would
+# take ~1,300 maps off the site on every deploy.
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -42,8 +47,9 @@ if grep -rq '__CARTO_KEY__' "$STAGE"; then
   exit 1
 fi
 
-aws s3 sync "$STAGE"/ "s3://$BUCKET/" --delete --exclude 'data/*'
-echo "deployed to s3://$BUCKET/ (data/ left alone — the Lambdas own it)"
+aws s3 sync "$STAGE"/ "s3://$BUCKET/" --delete --exclude 'data/*' \
+  --exclude 'routes.html' --exclude 'routes/*'
+echo "deployed to s3://$BUCKET/ (data/ left alone — the Lambdas own it; routes/ — rail-network-visualiser owns it)"
 
 # The pages carry an hour-long TTL, so without this a deploy is invisible for up
 # to an hour. Both spellings of each page are listed: they are separate cache

@@ -22,6 +22,9 @@ over — 2,641 sections, by day, month or year.
 - **`aggregate/`** — the daily job that builds the passenger-hours dashboard.
 - **`tracks/`** — the daily job that builds the [track-section map](tracks/README.md).
 - **`terraform/`** — deploy your own copy of the site, and the Lambdas that rebuild it daily.
+- **`/routes`** on the site is not built here: the station route maps are published by
+  [rail-network-visualiser](https://github.com/iiAnderson/rail-network-visualiser)
+  (`tools/site.sh`). `deploy.sh` excludes `routes.html` and `routes/` so the two never overwrite each other.
 - **`deploy.sh`** — publishes `site/`, substituting the basemap key that is deliberately not committed.
 
 ## The dataset
