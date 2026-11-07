@@ -14,7 +14,7 @@
 try{var t=localStorage.getItem('site-theme')||localStorage.getItem('tracks-theme');
     document.documentElement.dataset.theme=t==='light'?'light':'dark';}catch(e){}
 </script>
-<script src="rail.js" defer></script>
+<script src="rail.js?v=__RAIL_V__" defer></script>
 <style>
 /* Dark is the default, as it is on the map. The rail owns the toggle and the
    stored choice; every colour below is a token so the two themes stay in step. */

@@ -45,7 +45,7 @@
     { group: 'Visualisations' },
     { id: 'passenger-hours', name: 'Passenger hours', href: '/passenger-hours', icon: 'hours' },
     { id: 'tracks',          name: 'Track sections',  href: '/tracks',          icon: 'tracks' },
-    { id: 'routes',          name: 'Station routes',  href: '/routes',          icon: 'routes' },
+    { id: 'routes',          name: 'Network diagrams', href: '/routes',         icon: 'routes' },
     { group: 'Elsewhere' },
     { id: 'home', name: 'Home',        href: 'https://robbiea.co.uk',      icon: 'home', ext: true },
     { id: 'blog', name: 'Blog',        href: 'https://blog.robbiea.co.uk', icon: 'blog', ext: true },

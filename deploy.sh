@@ -42,7 +42,13 @@ cp -R site/. "$STAGE"/
 find "$STAGE" -name '*.html' -exec \
   perl -pi -e "s/__CARTO_KEY__/\Q$CARTO_KEY\E/g" {} +
 
-if grep -rq '__CARTO_KEY__' "$STAGE"; then
+# rail.js is loaded as rail.js?v=<its hash>, so a changed rail is a new URL and every browser fetches it.
+# Without this the file carries no Cache-Control, and a browser that last saw it weeks ago keeps the old
+# navigation for weeks more. CloudFront ignores the query string, so the object and its cache key are unchanged.
+RAIL_V="$(shasum site/rail.js | cut -c1-10)"
+find "$STAGE" -name '*.html' -exec perl -pi -e "s/__RAIL_V__/$RAIL_V/g" {} +
+
+if grep -rqE '__CARTO_KEY__|__RAIL_V__' "$STAGE"; then
   echo "error: placeholder still present after substitution" >&2
   exit 1
 fi
