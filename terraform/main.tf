@@ -123,7 +123,7 @@ resource "aws_cloudfront_distribution" "site" {
   is_ipv6_enabled = true
   # The function rewrites "/" before this is consulted, so it is belt and
   # braces — but a stale index.html here would be misleading.
-  default_root_object = "passenger-hours.html"
+  default_root_object = "routes.html"
   price_class         = var.price_class
   aliases             = local.use_domain ? [var.domain_name] : []
   comment             = "${var.project_name} static site"

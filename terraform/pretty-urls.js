@@ -21,10 +21,13 @@ function handler(event) {
     var request = event.request;
     var uri = request.uri;
 
-    // The dashboard is the front door, as it was before the landing page moved
-    // to robbiea.co.uk. Anyone who bookmarked the bare host keeps what they had.
+    // The network diagrams are the front door. They are published by the
+    // rail-network-visualiser repository (routes.html and routes/), not by this one;
+    // the page loads its maps from routes/ relative to itself, so it works at /
+    // as well as at /routes. /passenger-hours is unchanged for anyone who
+    // bookmarked it.
     if (uri === '/') {
-        request.uri = '/passenger-hours.html';
+        request.uri = '/routes.html';
         return request;
     }
 
