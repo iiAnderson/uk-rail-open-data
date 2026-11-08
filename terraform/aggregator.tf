@@ -94,7 +94,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "athena_results" {
 # Package
 #
 # boto3 ships in the Lambda runtime, so there is nothing to vendor — the zip is
-# the job plus its lookups plus the SQL it runs.
+# the job plus its lookups, the shared common/ module, and the SQL it runs.
 # ---------------------------------------------------------------------------
 
 data "archive_file" "aggregate" {
@@ -115,6 +115,15 @@ data "archive_file" "aggregate" {
     content {
       content  = file("${path.module}/../queries/${source.value}")
       filename = "queries/${source.value}"
+    }
+  }
+
+  # aggregate.py imports common.aws; without this the handler fails at import.
+  dynamic "source" {
+    for_each = fileset("${path.module}/../common", "*.py")
+    content {
+      content  = file("${path.module}/../common/${source.value}")
+      filename = "common/${source.value}"
     }
   }
 }
